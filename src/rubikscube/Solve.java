@@ -10,6 +10,12 @@ public class Solve {
     private char[][][] cube = new char[6][3][3];
     private static final int UP = 0, LEFT = 1, FRONT = 2, RIGHT = 3, BACK = 4, DOWN = 5;
 
+    /*
+              UP
+        LEFT FRONT RIGHT BACK
+             DOWN
+     */
+
     public Solve() {
         this.cube = null;
         this.solvedState
@@ -104,7 +110,7 @@ public class Solve {
         return string.toString();
     }
 
-    public boolean isSolved(){
+    public boolean isSolved() {
         return this.toString().equals(solvedState);
     }
 
@@ -133,7 +139,14 @@ public class Solve {
         return newCol;
     }
 
-    public void rotateFace(char[][] face){
+    public char[] reverse(char[] array) {
+        char temp = array[0];
+        array[0] = array[2];
+        array[2] = temp;
+        return array;
+    }
+
+    public void rotateFace(char[][] face) {
         char temp;
 
         //corner rotations
@@ -149,6 +162,94 @@ public class Solve {
         face[1][0] = face[2][1];
         face[2][1] = face[1][2];
         face[1][2] = temp;
+    }
+
+    public void moveFront() {
+        char[] u = getRow(UP, 2).clone();
+        char[] r = getCol(RIGHT, 0).clone();
+        char[] d = getRow(DOWN, 0).clone();
+        char[] l = getCol(LEFT, 2).clone();
+
+        setRow(UP, 2, reverse(l));
+        setCol(RIGHT, 0, u);
+        setRow(DOWN, 0, reverse(r));
+        setCol(LEFT, 2, reverse(d));
+
+        rotateFace(cube[FRONT]);
+    }
+
+    public void moveBack() {
+        char[] u = getRow(UP, 0).clone();
+        char[] r = getCol(RIGHT, 2).clone();
+        char[] d = getRow(DOWN, 2).clone();
+        char[] l = getCol(LEFT, 0).clone();
+
+        setRow(UP, 0, reverse(l));
+        setCol(RIGHT, 2, u);
+        setRow(DOWN, 2, reverse(r));
+        setCol(LEFT, 0, d);
+
+        rotateFace(cube[BACK]);
+
+    }
+
+    public void moveRight() {
+        char[] u = getCol(UP, 2).clone();
+        char[] f = getCol(FRONT, 2).clone();
+        char[] d = getCol(DOWN, 2).clone();
+        char[] b = getCol(BACK, 0).clone();
+
+        setCol(UP, 2, f);
+        setCol(FRONT, 2, d);
+        setCol(DOWN, 2, reverse(b));
+        setCol(BACK, 0, reverse(u));
+
+        rotateFace(cube[RIGHT]);
+    }
+
+    public void moveLeft() {
+        char[] u = getCol(UP, 0).clone();
+        char[] f = getCol(FRONT, 0).clone();
+        char[] d = getCol(DOWN, 0).clone();
+        char[] b = getCol(BACK, 2).clone();
+
+        setCol(UP, 0, reverse(b));
+        setCol(BACK, 2, reverse(d));
+        setCol(DOWN, 0, f);
+        setCol(FRONT, 0, u);
+
+        rotateFace(cube[LEFT]);
+
+    }
+
+    public void moveUp() {
+
+        char[] l = getRow(LEFT, 0).clone();
+        char[] f = getRow(FRONT, 0).clone();
+        char[] r = getRow(RIGHT, 0).clone();
+        char[] b = getRow(BACK, 0).clone();
+
+        setRow(FRONT, 0, r);
+        setRow(RIGHT, 0, b);
+        setRow(BACK, 0, l);
+        setRow(LEFT, 0, f);
+
+        rotateFace(cube[UP]);
+    }
+
+    public void moveDown() {
+        char[] f = getRow(FRONT, 2).clone();
+        char[] r = getRow(RIGHT, 2).clone();
+        char[] b = getRow(BACK, 2).clone();
+        char[] l = getRow(LEFT, 2).clone();
+
+        setRow(RIGHT, 2, f);
+        setRow(BACK, 2, reverse(r));
+        setRow(LEFT, 2, reverse(b));
+        setRow(FRONT, 2, l);
+
+        rotateFace(cube[DOWN]);
+
     }
 
 }
