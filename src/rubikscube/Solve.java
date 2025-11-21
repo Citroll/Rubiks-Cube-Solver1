@@ -7,11 +7,14 @@ import java.util.Scanner;
 public class Solve {
 
     private char[][][] cube = new char[6][3][3];
+
+    public Solve(){
+        this.cube = null;
+    }
     
-    public Solver(File file){
+    public Solve(File file){
         this.cube = createCube(file);
     }
-
 
     public char[][][] createCube(File file){
         String output = "";
@@ -47,10 +50,36 @@ public class Solve {
         return cube;
     }
 
-    public void createCube(String output){
-        output = output.replaceAll("[ ]", "");
+    @Override
+    public String toString() {
+        StringBuilder string = new StringBuilder();
 
+        for (int row = 0; row < 3; row++) {
+            string.append("   ");
+            for (int col = 0; col < 3; col++) {
+                string.append(cube[0][row][col]);
+            }
+            string.append("\n");
+        }
 
+        for (int row = 0; row < 3; row++) {
+            for (int face = 1; face <= 4; face++) {
+                for (int col = 0; col < 3; col++) {
+                    string.append(cube[face][row][col]);
+                }
+            }
+            string.append("\n");
+        }
+
+        for (int row = 0; row < 3; row++) {
+            string.append("   ");
+            for (int col = 0; col < 3; col++) {
+                string.append(cube[5][row][col]);
+            }
+            string.append("\n");
+        }
+
+        return string.toString();
     }
 
 }

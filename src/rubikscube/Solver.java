@@ -8,7 +8,8 @@ public class Solver {
     // Using method of corner and edge cubies.
     // Store each piece's current position and orientation (index, colours)
     
-    // 	To run compile with: javac src/rubikscube/Solver.java
+    // 	To run compile with:
+    // javac -cp src -d src src/rubikscube/*.java
     // java -cp src rubikscube.Solver testcases/base.txt output.txt
 
     public static void main(String[] args) {
@@ -25,6 +26,8 @@ public class Solver {
 
         File input = new File(args[0]); //converts file
         Solve solved = new Solve(input);
+        String out = solved.toString();
+        System.out.println(out);
         File output = new File(args[1]);
     }
 
