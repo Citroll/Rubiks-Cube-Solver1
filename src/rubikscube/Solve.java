@@ -6,17 +6,39 @@ import java.util.Scanner;
 
 public class Solve {
 
+    private String solvedState;
     private char[][][] cube = new char[6][3][3];
+    private static final int UP = 0, LEFT = 1, FRONT = 2, RIGHT = 3, BACK = 4, DOWN = 5;
 
-    public Solve(){
+    public Solve() {
         this.cube = null;
-    }
-    
-    public Solve(File file){
-        this.cube = createCube(file);
+        this.solvedState
+                = "   OOO\n"
+                + "   OOO\n"
+                + "   OOO\n"
+                + "GGGWWWBBBYYY\n"
+                + "GGGWWWBBBYYY\n"
+                + "GGGWWWBBBYYY\n"
+                + "   RRR\n"
+                + "   RRR\n"
+                + "   RRR\n";
     }
 
-    public char[][][] createCube(File file){
+    public Solve(File file) {
+        this.cube = createCube(file);
+        this.solvedState
+                = "   OOO\n"
+                + "   OOO\n"
+                + "   OOO\n"
+                + "GGGWWWBBBYYY\n"
+                + "GGGWWWBBBYYY\n"
+                + "GGGWWWBBBYYY\n"
+                + "   RRR\n"
+                + "   RRR\n"
+                + "   RRR\n";
+    }
+
+    public char[][][] createCube(File file) {
         String output = "";
         try (Scanner sc = new Scanner(file)) {
             while (sc.hasNextLine()) {
@@ -25,11 +47,11 @@ public class Solve {
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         output = output.replaceAll("[ ]", "");
-        
+
         int k = 0;
 
         for (int i = 0; i < 9; i++, k++) {
@@ -80,6 +102,53 @@ public class Solve {
         }
 
         return string.toString();
+    }
+
+    public boolean isSolved(){
+        return this.toString().equals(solvedState);
+    }
+
+    public char[] getRow(int face, int row) {
+        return cube[face][row];
+    }
+
+    public void setRow(int face, int row, char[] newRow) {
+        for (int i = 0; i < 3; i++) {
+            cube[face][row][i] = newRow[i];
+        }
+    }
+
+    public char[] getCol(int face, int col) {
+        char[] column = new char[3];
+        for (int i = 0; i < 3; i++) {
+            column[i] = cube[face][i][col];
+        }
+        return column;
+    }
+
+    public char[] setCol(int face, int col, char[] newCol) {
+        for (int i = 0; i < 3; i++) {
+            cube[face][i][col] = newCol[i];
+        }
+        return newCol;
+    }
+
+    public void rotateFace(char[][] face){
+        char temp;
+
+        //corner rotations
+        temp = face[0][0];
+        face[0][0] = face[2][0];
+        face[2][0] = face[2][2];
+        face[2][2] = face[0][2];
+        face[0][2] = temp;
+
+        //edge rotations
+        temp = face[0][1];
+        face[0][1] = face[1][0];
+        face[1][0] = face[2][1];
+        face[2][1] = face[1][2];
+        face[1][2] = temp;
     }
 
 }

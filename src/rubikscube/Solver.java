@@ -8,7 +8,7 @@ public class Solver {
     // Using method of corner and edge cubies.
     // Store each piece's current position and orientation (index, colours)
     
-    // 	To run compile with:
+    // To run, compile with:
     // javac -cp src -d src src/rubikscube/*.java
     // java -cp src rubikscube.Solver testcases/base.txt output.txt
 
