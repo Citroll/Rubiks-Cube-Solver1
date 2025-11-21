@@ -2,20 +2,14 @@ package rubikscube;
 
 import java.io.*;
 import java.lang.invoke.MethodHandles;
-import java.util.*;
 
 public class Solver {
-    // 	To run compile with: javac src/rubikscube/Solver.java
-    // java -cp src rubikscube.Solver testcases/base.txt output.txt
 
     // Using method of corner and edge cubies.
     // Store each piece's current position and orientation (index, colours)
-    class Cube {
-        public char face, side;
-        public int index;
-    }
-
-    private char cube[][][] = new char[6][3][3];
+    
+    // 	To run compile with: javac src/rubikscube/Solver.java
+    // java -cp src rubikscube.Solver testcases/base.txt output.txt
 
     public static void main(String[] args) {
         System.out.println("number of arguments: " + args.length);
@@ -29,23 +23,9 @@ public class Solver {
             return;
         }
 
-        readFile(args); //converts file
-        // solve...
+        File input = new File(args[0]); //converts file
+        Solve solved = new Solve(input);
         File output = new File(args[1]);
     }
 
-    public static void readFile(String[] args){
-        File input = new File(args[0]);
-        try (Scanner sc = new Scanner(input)) {
-            while (sc.hasNextLine()) {
-                String line = sc.nextLine();
-                System.out.println(line);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-
-    }
 }
