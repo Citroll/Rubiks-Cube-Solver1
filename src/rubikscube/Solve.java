@@ -2,49 +2,41 @@ package rubikscube;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Solve {
 
-    private String solvedState;
     private char[][][] cube = new char[6][3][3];
+    private char[][][] solvedCube = new char[6][3][3];
     private static final int UP = 0, LEFT = 1, FRONT = 2, RIGHT = 3, BACK = 4, DOWN = 5;
+    private String solved
+            = "   OOO\n"
+            + "   OOO\n"
+            + "   OOO\n"
+            + "GGGWWWBBBYYY\n"
+            + "GGGWWWBBBYYY\n"
+            + "GGGWWWBBBYYY\n"
+            + "   RRR\n"
+            + "   RRR\n"
+            + "   RRR\n";
 
     /*
               UP
         LEFT FRONT RIGHT BACK
              DOWN
      */
-
     public Solve() {
         this.cube = null;
-        this.solvedState
-                = "   OOO\n"
-                + "   OOO\n"
-                + "   OOO\n"
-                + "GGGWWWBBBYYY\n"
-                + "GGGWWWBBBYYY\n"
-                + "GGGWWWBBBYYY\n"
-                + "   RRR\n"
-                + "   RRR\n"
-                + "   RRR\n";
+        this.solvedCube = createCube(solved);
     }
 
     public Solve(File file) {
-        this.cube = createCube(file);
-        this.solvedState
-                = "   OOO\n"
-                + "   OOO\n"
-                + "   OOO\n"
-                + "GGGWWWBBBYYY\n"
-                + "GGGWWWBBBYYY\n"
-                + "GGGWWWBBBYYY\n"
-                + "   RRR\n"
-                + "   RRR\n"
-                + "   RRR\n";
+        this.cube = readFile(file);
+        this.solvedCube = createCube(solved);
     }
 
-    public char[][][] createCube(File file) {
+    public char[][][] readFile(File file) {
         String output = "";
         try (Scanner sc = new Scanner(file)) {
             while (sc.hasNextLine()) {
@@ -56,26 +48,31 @@ public class Solve {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        output = output.replaceAll("[ ]", "");
+        return createCube(output);
+    }
+
+    public char[][][] createCube(String output) {
+        char[][][] temp = new char[6][3][3];
+        output = output.replaceAll("[ \n]", "");
 
         int k = 0;
 
         for (int i = 0; i < 9; i++, k++) {
-            cube[0][i / 3][i % 3] = output.charAt(k);
+            temp[0][i / 3][i % 3] = output.charAt(k);
         }
 
         for (int row = 0; row < 3; row++) {
             for (int face = 1; face <= 4; face++) {
                 for (int col = 0; col < 3; col++, k++) {
-                    cube[face][row][col] = output.charAt(k);
+                    temp[face][row][col] = output.charAt(k);
                 }
             }
         }
 
         for (int i = 0; i < 9; i++, k++) {
-            cube[5][i / 3][i % 3] = output.charAt(k);
+            temp[5][i / 3][i % 3] = output.charAt(k);
         }
-        return cube;
+        return temp;
     }
 
     @Override
@@ -111,7 +108,32 @@ public class Solve {
     }
 
     public boolean isSolved() {
-        return this.toString().equals(solvedState);
+        return Arrays.deepEquals(this.cube, solvedCube);
+    }
+
+    public void applyMoves(String moves) {
+        for (int i = 0; i < moves.length(); i++) {
+            switch (moves.charAt(i)) {
+                case 'F':
+                    moveFront();
+                    break;
+                case 'B':
+                    moveBack();
+                    break;
+                case 'R':
+                    moveRight();
+                    break;
+                case 'L':
+                    moveLeft();
+                    break;
+                case 'U':
+                    moveUp();
+                    break;
+                case 'D':
+                    moveDown();
+                    break;
+            }
+        }
     }
 
     public char[] getRow(int face, int row) {
@@ -184,10 +206,10 @@ public class Solve {
         char[] d = getRow(DOWN, 2).clone();
         char[] l = getCol(LEFT, 0).clone();
 
-        setRow(UP, 0, reverse(l));
-        setCol(RIGHT, 2, u);
-        setRow(DOWN, 2, reverse(r));
-        setCol(LEFT, 0, d);
+        setRow(UP, 0, r);
+        setCol(RIGHT, 2, d);
+        setRow(DOWN, 2, l);
+        setCol(LEFT, 0, u);
 
         rotateFace(cube[BACK]);
 

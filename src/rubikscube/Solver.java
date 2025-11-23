@@ -26,6 +26,8 @@ public class Solver {
 
         File input = new File(args[0]); //converts file
         Solve solved = new Solve(input);
+        solved.applyMoves("URUUURRR");
+        System.out.println(solved.isSolved());
         String out = solved.toString();
         System.out.println(out);
         File output = new File(args[1]);
