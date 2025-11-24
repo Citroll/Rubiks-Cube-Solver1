@@ -111,6 +111,24 @@ public class Solve {
         return Arrays.deepEquals(this.cube, solvedCube);
     }
 
+    public boolean checkLayerOne(){
+        char[][][] temp = new char[6][3][3];
+        for(int i=0; i<3; i++){
+            for(int j=0; j<3; j++){
+                temp[FRONT][i][j] = 'W';
+            }
+        }
+        
+        for(int i=0; i<6; i++){
+            for(int j=0; j<3; j++){
+                for(int k=0; k<3; k++){
+                    System.out.print(temp[i][j][k]);
+                }
+            }
+            System.out.println(i);
+        }
+        return true;
+    }
     public void applyMoves(String moves) {
         for (int i = 0; i < moves.length(); i++) {
             switch (moves.charAt(i)) {
