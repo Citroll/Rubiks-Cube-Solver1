@@ -112,22 +112,22 @@ public class Solve {
     }
 
     public boolean checkLayerOne() {
-        char[][][] temp = new char[6][3][3];
+        boolean flag = true;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                temp[FRONT][i][j] = 'W';
+                if (cube[FRONT][i][j] != 'W'){
+                    flag = false;
+                }
             }
         }
 
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 3; j++) {
-                for (int k = 0; k < 3; k++) {
-                    System.out.print(temp[i][j][k]);
-                }
+        for (int i = 0; i < 3; i++) {
+            if (cube[LEFT][i][2] != 'G' || cube[RIGHT][i][0] != 'B' || cube[UP][2][i] != 'O' || cube[DOWN][0][i] != 'R'){
+                flag = false;
             }
-            System.out.println(i);
         }
-        return true;
+
+        return flag;
     }
 
     public void applyMoves(String input) {

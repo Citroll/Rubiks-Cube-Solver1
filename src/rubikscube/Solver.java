@@ -31,6 +31,7 @@ public class Solver {
         String moves = "D'";
         solved.applyMoves(moves);
         System.out.println(solved.toString());
+        System.out.println(solved.checkLayerOne());
         File output = new File(args[1]);
     }
 
