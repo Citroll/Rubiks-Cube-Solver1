@@ -153,13 +153,13 @@ public class Solve {
                 case "R'":
                     moveRight(true);
                     break;
-                /*case "L":
+                case "L":
                     moveLeft(false);
                     break;
                 case "L'":
                     moveLeft(true);
                     break;
-                case "U":
+                /*case "U":
                     moveUp(false);
                     break;
                 case "U'":
@@ -304,22 +304,26 @@ public class Solve {
         rotateFace(cube[RIGHT], CC);
     }
 
-    /*public void moveLeft() {
+    public void moveLeft(boolean CC) {
         char[] u = getCol(UP, 0).clone();
         char[] f = getCol(FRONT, 0).clone();
         char[] d = getCol(DOWN, 0).clone();
         char[] b = getCol(BACK, 2).clone();
 
-        setCol(UP, 0, reverse(b));
-        setCol(BACK, 2, reverse(d));
-        setCol(DOWN, 0, f);
-        setCol(FRONT, 0, u);
+        if (CC) {
+            
+        } else {
+            setCol(UP, 0, reverse(b));
+            setCol(BACK, 2, reverse(d));
+            setCol(DOWN, 0, f);
+            setCol(FRONT, 0, u);
+        }
 
-        rotateFace(cube[LEFT]);
+        rotateFace(cube[LEFT], CC);
 
     }
 
-    public void moveUp() {
+    /*public void moveUp() {
 
         char[] l = getRow(LEFT, 0).clone();
         char[] f = getRow(FRONT, 0).clone();
@@ -347,5 +351,7 @@ public class Solve {
 
         rotateFace(cube[DOWN]);
 
-    }*/
+    }
+
+     */
 }
