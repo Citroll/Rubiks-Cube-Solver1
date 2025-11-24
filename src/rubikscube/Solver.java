@@ -28,7 +28,7 @@ public class Solver {
         //Scanner sc = new Scanner(System.in);
         //System.out.println("Enter your string of moves (with spaces)");
         //String moves = sc.nextLine();
-        String moves = "R'";
+        String moves = "D'";
         solved.applyMoves(moves);
         System.out.println(solved.toString());
         File output = new File(args[1]);

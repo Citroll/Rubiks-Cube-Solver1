@@ -159,7 +159,7 @@ public class Solve {
                 case "L'":
                     moveLeft(true);
                     break;
-                /*case "U":
+                case "U":
                     moveUp(false);
                     break;
                 case "U'":
@@ -170,7 +170,7 @@ public class Solve {
                     break;
                 case "D'":
                     moveDown(true);
-                    break;*/
+                    break;
             }
         }
     }
@@ -311,7 +311,10 @@ public class Solve {
         char[] b = getCol(BACK, 2).clone();
 
         if (CC) {
-            
+            setCol(UP, 0, reverse(f));
+            setCol(BACK, 2, u);
+            setCol(DOWN, 0, reverse(b));
+            setCol(FRONT, 0, d);
         } else {
             setCol(UP, 0, reverse(b));
             setCol(BACK, 2, reverse(d));
@@ -323,35 +326,47 @@ public class Solve {
 
     }
 
-    /*public void moveUp() {
-
+    public void moveUp(boolean CC) {
         char[] l = getRow(LEFT, 0).clone();
         char[] f = getRow(FRONT, 0).clone();
         char[] r = getRow(RIGHT, 0).clone();
         char[] b = getRow(BACK, 0).clone();
 
-        setRow(FRONT, 0, r);
-        setRow(RIGHT, 0, b);
-        setRow(BACK, 0, l);
-        setRow(LEFT, 0, f);
+        if (CC) {
+            setRow(FRONT, 0, l);
+            setRow(RIGHT, 0, f);
+            setRow(BACK, 0, r);
+            setRow(LEFT, 0, b);
+        } else {
+            setRow(FRONT, 0, r);
+            setRow(RIGHT, 0, b);
+            setRow(BACK, 0, l);
+            setRow(LEFT, 0, f);
+        }
 
-        rotateFace(cube[UP]);
+        rotateFace(cube[UP], CC);
     }
 
-    public void moveDown() {
+    public void moveDown(boolean CC) {
         char[] f = getRow(FRONT, 2).clone();
         char[] r = getRow(RIGHT, 2).clone();
         char[] b = getRow(BACK, 2).clone();
         char[] l = getRow(LEFT, 2).clone();
 
-        setRow(RIGHT, 2, f);
-        setRow(BACK, 2, reverse(r));
-        setRow(LEFT, 2, reverse(b));
-        setRow(FRONT, 2, l);
+        if (CC) {
+            setRow(RIGHT, 2, b);
+            setRow(BACK, 2, reverse(l));
+            setRow(LEFT, 2, reverse(f));
+            setRow(FRONT, 2, r);
+        } else {
+            setRow(RIGHT, 2, f);
+            setRow(BACK, 2, reverse(r));
+            setRow(LEFT, 2, reverse(b));
+            setRow(FRONT, 2, l);
+        }
 
-        rotateFace(cube[DOWN]);
+        rotateFace(cube[DOWN], CC);
 
     }
 
-     */
 }
