@@ -11,6 +11,7 @@ public class Solver {
     // javac -cp src -d src src/rubikscube/*.java
     // java -cp src rubikscube.Solver testcases/base.txt output.txt
     public static void main(String[] args) {
+        long startTime = System.nanoTime();
         System.out.println("number of arguments: " + args.length);
         for (int i = 0; i < args.length; i++) {
             System.out.println(args[i]);
@@ -33,6 +34,9 @@ public class Solver {
         System.out.println(solved.toString());
         System.out.println(solved.checkLayerOne());
         File output = new File(args[1]);
+        long endTime = System.nanoTime();
+        long durationInNano = endTime - startTime;
+        System.out.println("Execution time in milliseconds: " + durationInNano / 1_000_000.0);
     }
 
 }

@@ -7,6 +7,9 @@ import java.util.Scanner;
 
 public class Solve {
 
+    private int[] cornerPerm = new int[8];
+    private int[] edgePerm = new int[12];
+
     private char[][][] cube = new char[6][3][3];
     private char[][][] solvedCube = new char[6][3][3];
     private static final int UP = 0, LEFT = 1, FRONT = 2, RIGHT = 3, BACK = 4, DOWN = 5;
