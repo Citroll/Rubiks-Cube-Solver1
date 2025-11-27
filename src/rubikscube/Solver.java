@@ -30,9 +30,6 @@ public class Solver {
         //System.out.println("Enter your string of moves (with spaces)");
         //String moves = sc.nextLine();
         String moves = "D'";
-        solved.applyMoves(moves);
-        System.out.println(solved.toString());
-        System.out.println(solved.checkLayerOne());
         File output = new File(args[1]);
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;
