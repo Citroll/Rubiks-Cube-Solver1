@@ -114,4 +114,8 @@ public class Solve {
 
     public Solve(File file) {
     }
+
+    private void solvedCube(){
+        
+    }
 }
