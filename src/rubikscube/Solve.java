@@ -110,15 +110,14 @@ public class Solve {
      */
     public Solve() {
         char[][][] solvedCube = readString(SOLVED);
+        initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
     }
 
     public Solve(File file) {
         char[][][] cube = readFile(file);
         char[][][] solvedCube = readString(SOLVED);
-    }
-
-    private void solvedCube() {
-
+        initState(cube, corners, edges, center);
+        initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
     }
 
     public char[][][] readFile(File file) {
@@ -172,4 +171,34 @@ public class Solve {
         return cube;
 
     }
+
+    public void initState(char[][][] cube, Corner[] cornerArr, Edge[] edgeArr, Center[] centerArr){
+
+        for(int i = 0; i<6; i++){//center
+            char col =  cube[i][1][1];
+            centerArr[i] = new Center(i, new Facelet(col, i));
+        }
+
+        for(int i=0; i<CORNERS.length; i++){//corners
+            int[] c = CORNERS[i];
+            int ori = 0;
+
+            Facelet f1 = new Facelet(cube[c[0]][c[1]][c[2]], c[0]);
+            Facelet f2 = new Facelet(cube[c[3]][c[4]][c[5]], c[3]);
+            Facelet f3 = new Facelet(cube[c[6]][c[7]][c[8]], c[6]);
+
+            cornerArr[i] = new Corner(i, ori, f1, f2, f3);
+        }
+
+        for(int i=0; i<EDGES.length; i++){//edges
+            int[] e = EDGES[i];
+            int ori = 0;
+
+            Facelet f1 = new Facelet(cube[e[0]][e[1]][e[2]], e[0]);
+            Facelet f2 = new Facelet(cube[e[3]][e[4]][e[5]], e[3]);
+
+            edgeArr[i] = new Edge(i, ori, f1, f2);
+        }
+    }
+
 }
