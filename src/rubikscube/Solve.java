@@ -127,6 +127,7 @@ public class Solve {
             for (int i = 0; i < 9; i++) {
                 lines[i] = br.readLine();
             }
+            br.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -161,7 +162,7 @@ public class Solve {
             }
         }
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++) { //Down
             String line = lines[6 + i];
             for (int k = 0; k < 3; k++) {
                 cube[D][i][k] = line.charAt(3 + k);
@@ -172,32 +173,97 @@ public class Solve {
 
     }
 
-    public void initState(char[][][] cube, Corner[] cornerArr, Edge[] edgeArr, Center[] centerArr){
-
-        for(int i = 0; i<6; i++){//center
-            char col =  cube[i][1][1];
+    public void initState(char[][][] cube, Corner[] cornerArr, Edge[] edgeArr, Center[] centerArr) {
+        for (int i = 0; i < 6; i++) {//center
+            char col = cube[i][1][1];
             centerArr[i] = new Center(i, new Facelet(col, i));
         }
 
-        for(int i=0; i<CORNERS.length; i++){//corners
+        char uCol = centerArr[U].f.colour;
+        char dCol = centerArr[D].f.colour;
+        char fCol = centerArr[F].f.colour;
+        char bCol = centerArr[B].f.colour;
+
+        for (int i = 0; i < CORNERS.length; i++) {//corners
             int[] c = CORNERS[i];
-            int ori = 0;
 
             Facelet f1 = new Facelet(cube[c[0]][c[1]][c[2]], c[0]);
             Facelet f2 = new Facelet(cube[c[3]][c[4]][c[5]], c[3]);
             Facelet f3 = new Facelet(cube[c[6]][c[7]][c[8]], c[6]);
 
+            int ori = cornerOri(f1, f2, f3, uCol, dCol);
+
             cornerArr[i] = new Corner(i, ori, f1, f2, f3);
         }
 
-        for(int i=0; i<EDGES.length; i++){//edges
+        for (int i = 0; i < EDGES.length; i++) {//edges
             int[] e = EDGES[i];
-            int ori = 0;
-
             Facelet f1 = new Facelet(cube[e[0]][e[1]][e[2]], e[0]);
             Facelet f2 = new Facelet(cube[e[3]][e[4]][e[5]], e[3]);
 
+            int ori = edgeOri(f1, f2, uCol, dCol, fCol, bCol);
+
             edgeArr[i] = new Edge(i, ori, f1, f2);
+        }
+    }
+
+    public int cornerOri(Facelet f1, Facelet f2, Facelet f3, char uCol, char dCol) {
+        Facelet ud;
+        int pos;
+
+        if (f1.colour == uCol || f1.colour == dCol) {
+            ud = f1;
+            pos = 0;
+        } else if (f2.colour == uCol || f2.colour == dCol) {
+            ud = f2;
+            pos = 1;
+        } else {
+            ud = f3;
+            pos = 2;
+        }
+
+        if (ud.face == U || ud.face == D) {
+            return 0;
+        }
+
+        return pos;
+    }
+
+    public int edgeOri(Facelet f1, Facelet f2, char uCol, char dCol, char fCol, char bCol) {
+        Facelet fb, ud;
+        boolean f1ud = (f1.colour == uCol || f1.colour == dCol);
+        boolean f2ud = (f2.colour == uCol || f2.colour == dCol);
+
+        if (f1ud || f2ud) {
+            if (f1ud) {
+                ud = f1;
+                if (ud.face == U || ud.face == D) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else {
+                ud = f2;
+                if (ud.face == U || ud.face == D) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        }
+
+        boolean f1fb = (f1.colour == fCol || f1.colour == bCol);
+
+        if (f1fb) {
+            fb = f1;
+        } else {
+            fb = f2;
+        }
+
+        if (fb.face == F || fb.face == B) {
+            return 0;
+        } else {
+            return 1;
         }
     }
 
