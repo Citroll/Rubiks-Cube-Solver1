@@ -1,7 +1,6 @@
 package rubikscube;
 
 import java.io.*;
-import java.util.*;
 
 public class Solve {
 
@@ -54,7 +53,7 @@ public class Solve {
         {R, 1, 2, B, 1, 0}, //11 BR
     };
 
-    private static final String[] BFS_MOVES = {
+    private static final String[] MOVES = {
         "U", "U'", "U2",
         "D", "D'", "D2",
         "L", "L'", "L2",
@@ -456,69 +455,48 @@ public class Solve {
     }
 
     //row & col helpers
-    public String firstLayerBFS(int maxDepth) {
+    public String firstLayerIDDFS(int maxDepth) {
         char[][][] start = cloneCube(this.cube);
 
         if (isFirstSolved(start)) {
             return "";
         }
 
-        Queue<Node> queue = new ArrayDeque<>();
-        Set<String> visited = new HashSet<>();
+        for (int i = 0; i <= maxDepth; i++) {
+            String result = DFS(start, "", i, 'X');
+            if (result != null) {
+                return result;
+            }
+        }
+        return null; //no answer in this depth
+    }
 
-        String first = cubeToString(start);
-        queue.add(new Node(start, "", 0));
-        visited.add(first);
+    public String DFS(char[][][] state, String moves, int depth, char lastFace) {
+        if (isFirstSolved(state)) {
+            return moves;
+        }
+        if(depth == 0){
+            return null;
+        }
 
-        while (!queue.isEmpty()) {
-            Node cur = queue.remove();
-
-            if (cur.depth == maxDepth) {
+        for (String move : MOVES) {
+            char face = move.charAt(0);
+            if (face == lastFace) {
                 continue;
             }
 
-            String lastMove = null;
+            char[][][] next = applyMoveToCube(state, move);
 
-            if (!cur.moves.isEmpty()) {
-                int index = cur.moves.lastIndexOf(' ');
-                if (index == -1) {
-                    lastMove = cur.moves;
-                } else {
-                    cur.moves.substring(index + 1);
-                }
+            String newPath;
+            if(moves.isEmpty()){
+                newPath = move;
+            }else{
+                newPath = moves + " " + move;
             }
 
-            for (String move : BFS_MOVES) {
-                if(lastMove != null){
-                    char lastFace = lastMove.charAt(0);
-                    char moveFace = move.charAt(0);
-
-                    if(lastFace == moveFace){
-                        continue;
-                    }
-                }
-
-                char[][][] next = applyMoveToCube(cur.state, move);
-
-                if (isFirstSolved(next)) {
-                    if (cur.moves.isEmpty()) {
-                        return move;
-                    } else {
-                        return cur.moves + " " + move;
-                    }
-                }
-
-                String nextMove = cubeToString(next);
-                String newMoves;
-                if (!visited.contains(nextMove)) {
-                    visited.add(nextMove);
-                    if (cur.moves.isEmpty()) {
-                        newMoves = move;
-                    } else {
-                        newMoves = cur.moves + " " + move;
-                    }
-                    queue.add(new Node(next, newMoves, cur.depth + 1));
-                }
+            String result = DFS(next, newPath, depth-1, face);
+            if (result != null) {
+                return result;
             }
         }
         return null;

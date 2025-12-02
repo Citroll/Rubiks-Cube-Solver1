@@ -25,23 +25,14 @@ public class Solver {
 
         File input = new File(args[0]); //converts file
         Solve solved = new Solve(input);
-        //To input a command of moves, add spaces between: "F F' B D R' L"
-        //Scanner sc = new Scanner(System.in);
-        //System.out.println("Enter your string of moves (with spaces)");
-        //String moves = sc.nextLine();
-        String moves = "";
+
         solved.printCube();
         System.out.println(solved.isSolved());
-        moves = solved.firstLayerBFS(8);
+
+        solved.applyMoves("R U R' U'");
+
+        String moves = solved.firstLayerIDDFS(4);
         System.out.println(moves);
-        if(moves != null){
-            solved.applyMoves(moves);
-            solved.printCube();
-            System.out.println(solved.isSolved());
-        }
-
-
-
 
 
         File output = new File(args[1]);
