@@ -1,6 +1,15 @@
 package rubikscube;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
 
 public class Solve {
 
@@ -35,7 +44,7 @@ public class Solve {
         {D, 0, 0, L, 2, 2, F, 2, 0}, //4 DLF
         {D, 0, 2, F, 2, 2, R, 2, 0}, //5 DFR
         {D, 2, 2, R, 2, 2, B, 2, 0}, //6 DRB
-        {D, 2, 0, B, 2, 2, L, 2, 0}  //7 DBL
+        {D, 2, 0, B, 2, 2, L, 2, 0} //7 DBL
     };
 
     private static final int[][] EDGES = {
@@ -64,6 +73,7 @@ public class Solve {
     };
 
     public static class Facelet {
+
         char colour;
         int face;
 
@@ -74,6 +84,7 @@ public class Solve {
     }
 
     public static class Center {
+
         int index;
         Facelet f;
 
@@ -84,6 +95,7 @@ public class Solve {
     }
 
     public static class Edge {
+
         int index;
         int ori;
         Facelet f1, f2;
@@ -97,6 +109,7 @@ public class Solve {
     }
 
     public static class Corner {
+
         int index;
         int ori;
         Facelet f1, f2, f3;
@@ -356,7 +369,9 @@ public class Solve {
         String[] moves = sequence.trim().split("\\s+");
 
         for (String m : moves) {
-            if (m.isEmpty()) continue;
+            if (m.isEmpty()) {
+                continue;
+            }
             applySingleMove(m);
         }
     }
@@ -435,7 +450,80 @@ public class Solve {
         this.cube = prev;
         return result;
     }
-    
+
+    public static String expandMove(String move) {
+        move = move.trim();
+        if (move.isEmpty()) {
+            return "";
+        }
+
+        char face = move.charAt(0); // U, D, L, R, F, B
+
+        if (move.length() == 1) {
+            // Just "U"
+            return String.valueOf(face);
+        }
+
+        char suffix = move.charAt(1);
+        switch (suffix) {
+            case '2': // U2 -> "U U"
+                return face + "" + face;
+            case '\'': // U' -> "U U U"
+                return face + "" + face + "" + face;
+            default:
+                // Unknown suffix, just return as-is
+                return move;
+        }
+    }
+
+    public static String expandSequence(String sequence) {
+        StringBuilder sb = new StringBuilder();
+        String[] tokens = sequence.trim().split("\\s+");
+
+        for (String t : tokens) {
+            if (t.isEmpty()) {
+                continue;
+            }
+            String expanded = expandMove(t);
+            if (expanded.isEmpty()) {
+                continue;
+            }
+            sb.append(expanded);
+        }
+
+        return sb.toString();
+    }
+
+    // A* search node
+    private static class Node {
+
+        char[][][] state;
+        String key;      // serialized state (for HashMap/HashSet)
+        int g;           // cost so far
+        int f;           // g + h
+        String lastMove; // last move used to get here (for pruning)
+
+        Node(char[][][] state, String key, int g, int f, String lastMove) {
+            this.state = state;
+            this.key = key;
+            this.g = g;
+            this.f = f;
+            this.lastMove = lastMove;
+        }
+    }
+
+// To reconstruct the path: where did this state come from?
+    private static class ParentInfo {
+
+        String parentKey;
+        String move; // move that took parent -> this
+
+        ParentInfo(String parentKey, String move) {
+            this.parentKey = parentKey;
+            this.move = move;
+        }
+    }
+
     //Heuristic
     private int heuristic(char[][][] state) {
         int mismatch = 0;
@@ -443,66 +531,128 @@ public class Solve {
             char center = state[face][1][1];
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
+                    // skip centers (they already match center by definition)
+                    if (i == 1 && j == 1) {
+                        continue;
+                    }
+
                     if (state[face][i][j] != center) {
                         mismatch++;
                     }
                 }
             }
         }
-        return mismatch;
-    }
-    
-    //IDDFS
-    public String solveCube(int maxDepth) {
-        char[][][] start = cloneCube(this.cube);
-        char[][][] solvedCube = readString(SOLVED);
 
-        if (cubesEqual(start, solvedCube)) {
+        // ceil(mismatch / 8.0) using integer math
+        return (mismatch + 7) / 8;
+    }
+
+    public String solveCubeAStar() {
+        // Starting state
+        char[][][] start = cloneCube(this.cube);
+        String startKey = cubeToString(start);
+
+        // Goal state
+        char[][][] goalState = readString(SOLVED);
+        String goalKey = cubeToString(goalState);
+
+        if (startKey.equals(goalKey)) {
             return ""; // already solved
         }
 
-        for (int depth = 1; depth <= maxDepth; depth++) {
-            String result = dfsSolve(start, solvedCube, "", depth, null);
-            if (result != null) {
-                return result.trim();
-            }
-        }
-        return null; // no solution within maxDepth
-    }
+        // Priority queue ordered by lowest f = g + h
+        PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
 
-    private String dfsSolve(char[][][] state,
-                            char[][][] solved,
-                            String path,
-                            int depth,
-                            String lastMove) {
-        if (depth == 0) {
-            if (cubesEqual(state, solved)) {
-                return path;
-            }
-            return null;
-        }
+        // gScore: best known cost from start to this state
+        Map<String, Integer> gScore = new HashMap<>();
 
-        for (String move : MOVES) {
-            // Simple pruning: don't turn the same face twice in a row
-            if (lastMove != null && !lastMove.isEmpty()) {
-                if (move.charAt(0) == lastMove.charAt(0)) {
+        // parent map for path reconstruction
+        Map<String, ParentInfo> parent = new HashMap<>();
+
+        // closed set of fully-explored states
+        Set<String> closed = new HashSet<>();
+
+        int h0 = heuristic(start);
+        Node startNode = new Node(start, startKey, 0, h0, null);
+
+        open.add(startNode);
+        gScore.put(startKey, 0);
+
+        while (!open.isEmpty()) {
+            Node current = open.poll();
+
+            // If we've already found a better path to this state, skip this stale entry
+            Integer bestG = gScore.get(current.key);
+            if (bestG != null && current.g > bestG) {
+                continue;
+            }
+
+            // Goal test
+            if (current.key.equals(goalKey)) {
+                // reconstruct compact path, then expand it to quarter turns
+                String compact = reconstructPath(parent, goalKey).trim();
+                return expandSequence(compact).trim();
+            }
+
+            if (!closed.add(current.key)) {
+                continue; // already processed
+            }
+
+            // Expand neighbors
+            for (String move : MOVES) {
+
+                // Simple pruning: don't move the same face twice in a row
+                if (current.lastMove != null && !current.lastMove.isEmpty()) {
+                    if (move.charAt(0) == current.lastMove.charAt(0)) {
+                        continue;
+                    }
+                }
+
+                char[][][] nextState = applyMoveToCube(current.state, move);
+                String nextKey = cubeToString(nextState);
+
+                int tentativeG = current.g + 1;
+
+                if (closed.contains(nextKey)) {
                     continue;
                 }
-            }
 
-            char[][][] next = applyMoveToCube(state, move);
-            String newPath = path.isEmpty() ? move : (path + " " + move);
+                int knownG = gScore.getOrDefault(nextKey, Integer.MAX_VALUE);
+                if (tentativeG >= knownG) {
+                    continue; // not a better path
+                }
 
-            String result = dfsSolve(next, solved, newPath, depth - 1, move);
-            if (result != null) {
-                return result;
+                // This is the best path so far to nextKey
+                gScore.put(nextKey, tentativeG);
+                parent.put(nextKey, new ParentInfo(current.key, move));
+
+                int h = heuristic(nextState);
+                int f = tentativeG + h;
+
+                Node neighbor = new Node(nextState, nextKey, tentativeG, f, move);
+                open.add(neighbor);
             }
         }
+
+        // No solution found (this shouldn't happen for valid scrambles)
         return null;
     }
 
-    // row/col helpers and moves
+    private String reconstructPath(Map<String, ParentInfo> parent, String goalKey) {
+        List<String> moves = new ArrayList<>();
+        String currentKey = goalKey;
 
+        while (parent.containsKey(currentKey)) {
+            ParentInfo info = parent.get(currentKey);
+            moves.add(info.move);
+            currentKey = info.parentKey;
+        }
+
+        Collections.reverse(moves);
+        return String.join(" ", moves);
+    }
+
+    // row/col helpers and moves
     public char[] getRow(int face, int row) {
         char[] temp = new char[3];
         for (int i = 0; i < 3; i++) {
