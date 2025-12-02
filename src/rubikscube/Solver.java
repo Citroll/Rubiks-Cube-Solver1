@@ -24,17 +24,20 @@ public class Solver {
         }
 
         File input = new File(args[0]); //converts file
-        Solve solved = new Solve(input);
+        Solve cube = new Solve(input);
 
-        solved.printCube();
-        System.out.println(solved.isSolved());
+        String solution = cube.solveKociemba(12,22);
+        System.out.println("Solution: " + solution);
 
-        solved.applyMoves("R U R' U'");
-
-        String moves = solved.firstLayerIDDFS(4);
-        System.out.println(moves);
-
-
+        if (solution != null && !solution.isEmpty()) {
+            System.out.println("Applying solution: " + solution);
+            cube.applyMoves(solution);
+            System.out.println("Solved? " + cube.isSolved());
+            cube.printCube();
+        } else {
+            System.out.println("No moves to apply (solution was "
+                    + (solution == null ? "null" : "empty") + ")");
+        }
         File output = new File(args[1]);
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;

@@ -1,6 +1,8 @@
 package rubikscube;
 
 import java.io.*;
+import java.util.ArrayDeque;
+import java.util.Arrays;
 
 public class Solve {
 
@@ -61,6 +63,8 @@ public class Solve {
         "F", "F'", "F2",
         "B", "B'", "B2"
     };
+
+    private static final String[] PHASE2_MOVES = MOVES;
 
     public static class Node {
 
@@ -375,8 +379,746 @@ public class Solve {
         return temp;
     }
 
+    /*
+        Kociembas
+     */
+    public static class CubieCube {
+
+        public int[] cp = new int[8];
+        public int[] co = new int[8];
+
+        public int[] ep = new int[12];
+        public int[] eo = new int[12];
+
+        public CubieCube() {
+        }
+
+        public CubieCube(CubieCube other) {
+            System.arraycopy(other.cp, 0, cp, 0, 8);
+            System.arraycopy(other.co, 0, co, 0, 8);
+            System.arraycopy(other.ep, 0, ep, 0, 12);
+            System.arraycopy(other.eo, 0, eo, 0, 12);
+        }
+    }
+
+    public CubieCube toCubieCube() {
+        CubieCube cc = new CubieCube();
+
+        // corners
+        for (int i = 0; i < 8; i++) {
+            Corner c = corners[i];
+            cc.cp[i] = c.index;
+            cc.co[i] = c.ori;
+        }
+
+        // edges
+        for (int i = 0; i < 12; i++) {
+            Edge e = edges[i];
+            cc.ep[i] = e.index;
+            cc.eo[i] = e.ori;
+        }
+
+        return cc;
+    }
+
+    /*
+        PHASE 1 Pruning Tables
+     */
+    private static final int EO_SIZE = 2048;
+    private static final int CO_SIZE = 2187;
+
+    private static int[] edgeOriPrune = null;
+    private static int[] cornerOriPrune = null;
+    private static boolean pruningInitialized = false;
+
+    private static CubieCube solvedCubie() {
+        CubieCube c = new CubieCube();
+        for (int i = 0; i < 8; i++) {
+            c.cp[i] = i;
+            c.co[i] = 0;
+        }
+        for (int i = 0; i < 12; i++) {
+            c.ep[i] = i;
+            c.eo[i] = 0;
+        }
+        return c;
+    }
+
+    private static int edgeOriIndex(CubieCube cc) {
+        int idx = 0;
+        int pow = 1;
+        for (int i = 0; i < 11; i++) {
+            idx += cc.eo[i] * pow;
+            pow <<= 1;
+        }
+        return idx;
+    }
+
+    private static int cornerOriIndex(CubieCube cc) {
+        int idx = 0;
+        int pow = 1;
+        for (int i = 0; i < 7; i++) {
+            idx += cc.co[i] * pow;
+            pow *= 3;
+        }
+        return idx;
+    }
+
+    private static void cycle4(int[] arr, int a, int b, int c, int d) {
+        int tmp = arr[a];
+        arr[a] = arr[b];
+        arr[b] = arr[c];
+        arr[c] = arr[d];
+        arr[d] = tmp;
+    }
+
+    private static void twistCornerArr(int[] co, int idx, int x) {
+        co[idx] = (co[idx] + x + 3) % 3;
+    }
+
+    private static void flipEdgeArr(int[] eo, int idx) {
+        eo[idx] ^= 1;
+    }
+
+    private static void moveUQuarter(CubieCube c) {
+        cycle4(c.cp, 0, 1, 2, 3);
+        cycle4(c.ep, 0, 1, 2, 3);
+    }
+
+    private static void moveDQuarter(CubieCube c) {
+        cycle4(c.cp, 4, 5, 6, 7);
+        cycle4(c.ep, 4, 5, 6, 7);
+    }
+
+    private static void moveLQuarter(CubieCube c) {
+        cycle4(c.cp, 3, 0, 4, 7);
+        twistCornerArr(c.co, 3, 1);
+        twistCornerArr(c.co, 0, 2);
+        twistCornerArr(c.co, 4, 1);
+        twistCornerArr(c.co, 7, 2);
+
+        cycle4(c.ep, 2, 9, 6, 10);
+        // no edge flips
+    }
+
+    private static void moveRQuarter(CubieCube c) {
+        cycle4(c.cp, 1, 2, 6, 5);
+        twistCornerArr(c.co, 1, 1);
+        twistCornerArr(c.co, 2, 2);
+        twistCornerArr(c.co, 6, 1);
+        twistCornerArr(c.co, 5, 2);
+
+        cycle4(c.ep, 0, 11, 4, 8);
+        // no edge flips
+    }
+
+    private static void moveFQuarter(CubieCube c) {
+        cycle4(c.cp, 0, 1, 5, 4);
+        twistCornerArr(c.co, 0, 1);
+        twistCornerArr(c.co, 1, 2);
+        twistCornerArr(c.co, 5, 1);
+        twistCornerArr(c.co, 4, 2);
+
+        cycle4(c.ep, 1, 8, 5, 9);
+        flipEdgeArr(c.eo, 1);
+        flipEdgeArr(c.eo, 8);
+        flipEdgeArr(c.eo, 5);
+        flipEdgeArr(c.eo, 9);
+    }
+
+    private static void moveBQuarter(CubieCube c) {
+        cycle4(c.cp, 2, 3, 7, 6);
+        twistCornerArr(c.co, 2, 1);
+        twistCornerArr(c.co, 3, 2);
+        twistCornerArr(c.co, 7, 1);
+        twistCornerArr(c.co, 6, 2);
+
+        cycle4(c.ep, 3, 10, 7, 11);
+        flipEdgeArr(c.eo, 3);
+        flipEdgeArr(c.eo, 10);
+        flipEdgeArr(c.eo, 7);
+        flipEdgeArr(c.eo, 11);
+    }
+
+    private static void applyQuarterTurn(CubieCube c, char face) {
+        switch (face) {
+            case 'U':
+                moveUQuarter(c);
+                break;
+            case 'D':
+                moveDQuarter(c);
+                break;
+            case 'L':
+                moveLQuarter(c);
+                break;
+            case 'R':
+                moveRQuarter(c);
+                break;
+            case 'F':
+                moveFQuarter(c);
+                break;
+            case 'B':
+                moveBQuarter(c);
+                break;
+        }
+    }
+
+    private static CubieCube applyMoveCubie(CubieCube cc, int moveIndex) {
+        char face;
+        int times;
+        switch (moveIndex) {
+            case 0:
+                face = 'U';
+                times = 1;
+                break;
+            case 1:
+                face = 'U';
+                times = 3;
+                break;
+            case 2:
+                face = 'U';
+                times = 2;
+                break;
+
+            case 3:
+                face = 'D';
+                times = 1;
+                break;
+            case 4:
+                face = 'D';
+                times = 3;
+                break;
+            case 5:
+                face = 'D';
+                times = 2;
+                break;
+
+            case 6:
+                face = 'L';
+                times = 1;
+                break;
+            case 7:
+                face = 'L';
+                times = 3;
+                break;
+            case 8:
+                face = 'L';
+                times = 2;
+                break;
+
+            case 9:
+                face = 'R';
+                times = 1;
+                break;
+            case 10:
+                face = 'R';
+                times = 3;
+                break;
+            case 11:
+                face = 'R';
+                times = 2;
+                break;
+
+            case 12:
+                face = 'F';
+                times = 1;
+                break;
+            case 13:
+                face = 'F';
+                times = 3;
+                break;
+            case 14:
+                face = 'F';
+                times = 2;
+                break;
+
+            case 15:
+                face = 'B';
+                times = 1;
+                break;
+            case 16:
+                face = 'B';
+                times = 3;
+                break;
+            case 17:
+                face = 'B';
+                times = 2;
+                break;
+            default:
+                face = 'U';
+                times = 0;
+        }
+
+        CubieCube res = new CubieCube(cc);
+        for (int i = 0; i < times; i++) {
+            applyQuarterTurn(res, face);
+        }
+        return res;
+    }
+
+    private static void initPruningTables() {
+        if (pruningInitialized) {
+            return;
+        }
+
+        System.out.println("Initializing Phase 1 orientation pruning tables...");
+
+        // Edge orientation table
+        edgeOriPrune = new int[EO_SIZE];
+        Arrays.fill(edgeOriPrune, -1);
+
+        ArrayDeque<CubieCube> qEO = new ArrayDeque<>();
+        CubieCube solved = solvedCubie();
+        int eoStart = edgeOriIndex(solved);
+        edgeOriPrune[eoStart] = 0;
+        qEO.add(solved);
+
+        while (!qEO.isEmpty()) {
+            CubieCube cur = qEO.poll();
+            int curIdx = edgeOriIndex(cur);
+            int curDist = edgeOriPrune[curIdx];
+
+            for (int m = 0; m < 18; m++) {
+                CubieCube next = applyMoveCubie(cur, m);
+                int idx = edgeOriIndex(next);
+                if (edgeOriPrune[idx] == -1) {
+                    edgeOriPrune[idx] = curDist + 1;
+                    qEO.add(next);
+                }
+            }
+        }
+
+        // Corner orientation table
+        cornerOriPrune = new int[CO_SIZE];
+        Arrays.fill(cornerOriPrune, -1);
+
+        ArrayDeque<CubieCube> qCO = new ArrayDeque<>();
+        CubieCube solved2 = solvedCubie();
+        int coStart = cornerOriIndex(solved2);
+        cornerOriPrune[coStart] = 0;
+        qCO.add(solved2);
+
+        while (!qCO.isEmpty()) {
+            CubieCube cur = qCO.poll();
+            int curIdx = cornerOriIndex(cur);
+            int curDist = cornerOriPrune[curIdx];
+
+            for (int m = 0; m < 18; m++) {
+                CubieCube next = applyMoveCubie(cur, m);
+                int idx = cornerOriIndex(next);
+                if (cornerOriPrune[idx] == -1) {
+                    cornerOriPrune[idx] = curDist + 1;
+                    qCO.add(next);
+                }
+            }
+        }
+
+        pruningInitialized = true;
+        System.out.println("Pruning tables initialized.");
+    }
+
+    /*
+        PHASE 1:
+     */
+    private boolean allEdgesOriented(CubieCube cc) {
+        for (int i = 0; i < 12; i++) {
+            if (cc.eo[i] != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean allCornersOriented(CubieCube cc) {
+        for (int i = 0; i < 8; i++) {
+            if (cc.co[i] != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isInG1(CubieCube cc) {
+        return allEdgesOriented(cc) && allCornersOriented(cc);
+    }
+
+    public int phase1Heuristic(CubieCube cc) {
+        initPruningTables();
+
+        int eoIdx = edgeOriIndex(cc);
+        int coIdx = cornerOriIndex(cc);
+
+        int hEO = edgeOriPrune[eoIdx];
+        int hCO = cornerOriPrune[coIdx];
+
+        return Math.max(hEO, hCO);
+    }
+
+    public String solvePhase1(int maxDepth) {
+        CubieCube start = toCubieCube();
+
+        if (isInG1(start)) {
+            return "";
+        }
+
+        int bound = phase1Heuristic(start);
+        if (bound < 1) {
+            bound = 1;
+        }
+
+        System.out.println("Phase1: initial heuristic bound = " + bound);
+
+        while (bound <= maxDepth) {
+            System.out.println("Phase1: trying bound = " + bound);
+            String result = phase1DFS("", 0, bound, 'X');
+            if (result != null) {
+                System.out.println("Phase1: found G1 at bound " + bound);
+                return result;
+            }
+            bound++;
+        }
+
+        return null;
+    }
+
+    private String phase1DFS(String moves, int g, int bound, char lastFace) {
+        CubieCube cc = toCubieCube();
+
+        if (isInG1(cc)) {
+            return moves;
+        }
+
+        int h = phase1Heuristic(cc);
+        int f = g + h;
+        if (f > bound) {
+            return null;
+        }
+        if (g == bound) {
+            return null;
+        }
+
+        for (String move : MOVES) {
+            char face = move.charAt(0);
+            if (face == lastFace) {
+                continue; // prune same-face repetition
+            }
+            applyMove(move);
+            String newMoves = moves.isEmpty() ? move : moves + " " + move;
+
+            String res = phase1DFS(newMoves, g + 1, bound, face);
+
+            undoMove(move);
+
+            if (res != null) {
+                return res;
+            }
+        }
+
+        return null;
+    }
+
+    /*
+        PHASE 2:
+     */
+    private int phase2Heuristic(CubieCube cc) {
+        int wrong = 0;
+
+        for (int i = 0; i < 8; i++) {
+            if (cc.cp[i] != i) {
+                wrong++;
+            }
+        }
+        for (int i = 0; i < 12; i++) {
+            if (cc.ep[i] != i) {
+                wrong++;
+            }
+        }
+
+        if (wrong == 0) {
+            return 0;
+        }
+        return (wrong + 3) / 4;
+    }
+
+    public String solvePhase2(int maxDepth) {
+        if (isSolved()) {
+            return "";
+        }
+
+        CubieCube cc = toCubieCube();
+        int bound = phase2Heuristic(cc);
+        if (bound < 1) {
+            bound = 1;
+        }
+
+        System.out.println("Phase2: initial heuristic bound = " + bound);
+
+        while (bound <= maxDepth) {
+            System.out.println("Phase2: trying bound = " + bound);
+            String res = phase2DFS("", 0, bound, 'X');
+            if (res != null) {
+                System.out.println("Phase2: found solution at bound " + bound);
+                return res;
+            }
+            bound++;
+        }
+
+        System.out.println("Phase2: no solution within bound " + maxDepth);
+        return null;
+    }
+
+    private String phase2DFS(String moves, int g, int bound, char lastFace) {
+        if (isSolved()) {
+            return moves;
+        }
+
+        CubieCube cc = toCubieCube();
+        int h = phase2Heuristic(cc);
+        int f = g + h;
+        if (f > bound) {
+            return null;
+        }
+        if (g == bound) {
+            return null;
+        }
+
+        for (String move : PHASE2_MOVES) {
+            char face = move.charAt(0);
+            if (face == lastFace) {
+                continue;
+            }
+
+            applyMove(move);
+            String newMoves = moves.isEmpty() ? move : moves + " " + move;
+
+            String res = phase2DFS(newMoves, g + 1, bound, face);
+
+            undoMove(move);
+
+            if (res != null) {
+                return res;
+            }
+        }
+
+        return null;
+    }
+
+    public String solveKociemba(int maxDepthPhase1, int maxDepthPhase2) {
+        // Backup original state so we can verify candidate solution
+        char[][][] cubeBackup = cloneCube(this.cube);
+        Corner[] cornersBackup = new Corner[8];
+        Edge[] edgesBackup = new Edge[12];
+        Center[] centerBackup = new Center[6];
+
+        for (int i = 0; i < 8; i++) {
+            Corner c = this.corners[i];
+            cornersBackup[i] = new Corner(
+                    c.index, c.ori,
+                    new Facelet(c.f1.colour, c.f1.face),
+                    new Facelet(c.f2.colour, c.f2.face),
+                    new Facelet(c.f3.colour, c.f3.face)
+            );
+        }
+        for (int i = 0; i < 12; i++) {
+            Edge e = this.edges[i];
+            edgesBackup[i] = new Edge(
+                    e.index, e.ori,
+                    new Facelet(e.f1.colour, e.f1.face),
+                    new Facelet(e.f2.colour, e.f2.face)
+            );
+        }
+        for (int i = 0; i < 6; i++) {
+            Center cen = this.center[i];
+            centerBackup[i] = new Center(
+                    cen.index,
+                    new Facelet(cen.f.colour, cen.f.face)
+            );
+        }
+
+        // ---- Phase 1: reach G1 (all oriented) ----
+        String p1 = solvePhase1(maxDepthPhase1);
+        if (p1 == null) {
+            return null; // can't reach G1
+        }
+
+        if (!p1.isEmpty()) {
+            applyMoves(p1);
+        }
+
+        // ---- Phase 2: solve from G1 ----
+        String p2 = solvePhase2(maxDepthPhase2);
+
+        // Build candidate
+        String candidate;
+        if (p2 == null || p2.trim().isEmpty()) {
+            candidate = p1;
+        } else if (p1.isEmpty()) {
+            candidate = p2;
+        } else {
+            candidate = p1 + " " + p2;
+        }
+
+        // ---- Verify candidate actually solves from original state ----
+        this.cube = cloneCube(cubeBackup);
+        this.corners = cornersBackup;
+        this.edges = edgesBackup;
+        this.center = centerBackup;
+
+        if (candidate != null && !candidate.trim().isEmpty()) {
+            applyMoves(candidate);
+            if (isSolved()) {
+                return candidate; // ✅ real solution
+            } else {
+                return null;      // ❌ candidate failed, don't lie
+            }
+        }
+
+        return null;
+    }
+
+
+    /*
+        Getters, Setters, Rotation functions
+     */
+    public void applyMove(String move) {
+        switch (move) {
+            case "U":
+                moveU();
+                break;
+            case "U'":
+                moveUprime();
+                break;
+            case "U2":
+                moveU2();
+                break;
+
+            case "D":
+                moveD();
+                break;
+            case "D'":
+                moveDprime();
+                break;
+            case "D2":
+                moveD2();
+                break;
+
+            case "L":
+                moveL();
+                break;
+            case "L'":
+                moveLprime();
+                break;
+            case "L2":
+                moveL2();
+                break;
+
+            case "R":
+                moveR();
+                break;
+            case "R'":
+                moveRprime();
+                break;
+            case "R2":
+                moveR2();
+                break;
+
+            case "F":
+                moveF();
+                break;
+            case "F'":
+                moveFprime();
+                break;
+            case "F2":
+                moveF2();
+                break;
+
+            case "B":
+                moveB();
+                break;
+            case "B'":
+                moveBprime();
+                break;
+            case "B2":
+                moveB2();
+                break;
+        }
+    }
+
+    public void undoMove(String move) {
+        switch (move) {
+            case "U":
+                moveUprime();
+                break;
+            case "U'":
+                moveU();
+                break;
+            case "U2":
+                moveU2();
+                break;
+
+            case "D":
+                moveDprime();
+                break;
+            case "D'":
+                moveD();
+                break;
+            case "D2":
+                moveD2();
+                break;
+
+            case "L":
+                moveLprime();
+                break;
+            case "L'":
+                moveL();
+                break;
+            case "L2":
+                moveL2();
+                break;
+
+            case "R":
+                moveRprime();
+                break;
+            case "R'":
+                moveR();
+                break;
+            case "R2":
+                moveR2();
+                break;
+
+            case "F":
+                moveFprime();
+                break;
+            case "F'":
+                moveF();
+                break;
+            case "F2":
+                moveF2();
+                break;
+
+            case "B":
+                moveBprime();
+                break;
+            case "B'":
+                moveB();
+                break;
+            case "B2":
+                moveB2();
+                break;
+        }
+    }
+
     public void applyMoves(String sequence) {
-        String[] moves = sequence.trim().split("\\s+");
+        if (sequence == null) {
+            return;
+        }
+
+        sequence = sequence.trim();
+        if (sequence.isEmpty()) {
+            return;
+        }
+
+        String[] moves = sequence.split("\\s+");
 
         for (String m : moves) {
             switch (m) {
@@ -442,64 +1184,6 @@ public class Solve {
             }
         }
 
-    }
-
-    public char[][][] applyMoveToCube(char[][][] cube, String move) {
-        char[][][] prev = this.cube;
-        this.cube = cloneCube(cube);
-        applyMoves(move);
-
-        char[][][] result = cloneCube(this.cube);
-        this.cube = prev;
-        return result;
-    }
-
-    //row & col helpers
-    public String firstLayerIDDFS(int maxDepth) {
-        char[][][] start = cloneCube(this.cube);
-
-        if (isFirstSolved(start)) {
-            return "";
-        }
-
-        for (int i = 0; i <= maxDepth; i++) {
-            String result = DFS(start, "", i, 'X');
-            if (result != null) {
-                return result;
-            }
-        }
-        return null; //no answer in this depth
-    }
-
-    public String DFS(char[][][] state, String moves, int depth, char lastFace) {
-        if (isFirstSolved(state)) {
-            return moves;
-        }
-        if(depth == 0){
-            return null;
-        }
-
-        for (String move : MOVES) {
-            char face = move.charAt(0);
-            if (face == lastFace) {
-                continue;
-            }
-
-            char[][][] next = applyMoveToCube(state, move);
-
-            String newPath;
-            if(moves.isEmpty()){
-                newPath = move;
-            }else{
-                newPath = moves + " " + move;
-            }
-
-            String result = DFS(next, newPath, depth-1, face);
-            if (result != null) {
-                return result;
-            }
-        }
-        return null;
     }
 
     public char[] getRow(int face, int row) {
