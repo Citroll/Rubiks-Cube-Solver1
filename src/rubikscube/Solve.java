@@ -12,6 +12,7 @@ public class Solve {
     Edge[] solvedEdges = new Edge[12];
     Center[] solvedCenter = new Center[8];
 
+    private char[][][] cube;
     private static final int U = 0, L = 1, F = 2, R = 3, B = 4, D = 5;
     private static final String SOLVED
             = "   OOO\n"
@@ -109,14 +110,16 @@ public class Solve {
              DOWN
      */
     public Solve() {
+        cube = readString(SOLVED);
+        initState(cube, corners, edges, center);
         char[][][] solvedCube = readString(SOLVED);
         initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
     }
 
     public Solve(File file) {
-        char[][][] cube = readFile(file);
-        char[][][] solvedCube = readString(SOLVED);
+        cube = readFile(file);
         initState(cube, corners, edges, center);
+        char[][][] solvedCube = readString(SOLVED);
         initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
     }
 
@@ -267,4 +270,38 @@ public class Solve {
         }
     }
 
+    public void printCube(){
+        System.out.println(cubeToString(cube));
+    }
+
+    public String cubeToString(char[][][] cube){
+        StringBuilder string = new StringBuilder();
+
+        for (int row = 0; row < 3; row++) {
+            string.append("   ");
+            for (int col = 0; col < 3; col++) {
+                string.append(cube[U][row][col]);
+            }
+            string.append("\n");
+        }
+
+        for (int row = 0; row < 3; row++) {
+            for (int face = 1; face <= 4; face++) {
+                for (int col = 0; col < 3; col++) {
+                    string.append(cube[face][row][col]);
+                }
+            }
+            string.append("\n");
+        }
+
+        for (int row = 0; row < 3; row++) {
+            string.append("   ");
+            for (int col = 0; col < 3; col++) {
+                string.append(cube[D][row][col]);
+            }
+            string.append("\n");
+        }
+
+        return string.toString();
+    }
 }
