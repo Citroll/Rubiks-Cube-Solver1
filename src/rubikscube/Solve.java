@@ -4,282 +4,320 @@ import java.io.*;
 
 public class Solve {
 
-    // Face indices
-    private static final int FRONT = 0;
-    private static final int BACK = 1;
-    private static final int RIGHT = 2;
-    private static final int LEFT = 3;
-    private static final int UP = 4;
-    private static final int DONW = 5; // (kept your original name)
+    Corner[] corners = new Corner[8];
+    Edge[] edges = new Edge[12];
+    Center[] center = new Center[8];
 
-    // Current state of the cube
-    private char[][][] state;
+    Corner[] solvedCorners = new Corner[8];
+    Edge[] solvedEdges = new Edge[12];
+    Center[] solvedCenter = new Center[8];
 
-    // Solved reference state
-    private static final char[][][] solvedState = createSolvedState();
+    private char[][][] cube;
+    private static final int U = 0, L = 1, F = 2, R = 3, B = 4, D = 5;
+    private static final String SOLVED
+            = "   OOO\n"
+            + "   OOO\n"
+            + "   OOO\n"
+            + "GGGWWWBBBYYY\n"
+            + "GGGWWWBBBYYY\n"
+            + "GGGWWWBBBYYY\n"
+            + "   RRR\n"
+            + "   RRR\n"
+            + "   RRR\n";
 
-    // ----- IDA* fields -----
-    private static final int FOUND = -1;
-    private static final int INF = Integer.MAX_VALUE;
-    // Allowed moves (clockwise quarter-turns)
-    private static final char[] MOVES = {'U', 'D', 'L', 'R', 'F', 'B'};
-    // Maximum solution length we are willing to search
-    private static final int MAX_DEPTH = 12; // tweak if needed
+    //CORNERS: UFL, URF, UBR, ULB, DLF, DFR, DRB, DBL
+    //EDGES: UR, UF, UL, UB, DR, DF, DL, DB, FR, FL, BL, BR
+    private static final int[][] CORNERS = {
+        {U, 2, 0, F, 0, 0, L, 0, 2}, //0 UFL
+        {U, 2, 2, R, 0, 0, F, 0, 2}, //1 URF
+        {U, 0, 2, B, 0, 0, R, 0, 2}, //2 UBR
+        {U, 0, 0, L, 0, 0, B, 0, 2}, //3 ULB
+        {D, 0, 0, L, 2, 2, F, 2, 0}, //4 DLF
+        {D, 0, 2, F, 2, 2, R, 2, 0}, //5 DFR
+        {D, 2, 2, R, 2, 2, B, 2, 0}, //6 DRB
+        {D, 2, 0, B, 2, 2, L, 2, 0}  //7 DBL
+    };
 
-    // Solution buffer used by IDA*
-    private String idaSolution = null;
+    private static final int[][] EDGES = {
+        {U, 1, 2, R, 0, 1}, //0 UR
+        {U, 2, 1, F, 0, 1}, //1 UF
+        {U, 1, 0, L, 0, 1}, //2 UL
+        {U, 0, 1, B, 0, 1}, //3 UB
+        {D, 1, 2, R, 2, 1}, //4 DR
+        {D, 0, 1, F, 2, 1}, //5 DF
+        {D, 1, 0, L, 2, 1}, //6 DL
+        {D, 2, 1, B, 2, 1}, //7 DB
+        {F, 1, 2, R, 1, 0}, //8 FR
+        {F, 1, 0, L, 1, 2}, //9 FL
+        {B, 1, 2, L, 1, 0}, //10 BL
+        {R, 1, 2, B, 1, 0}, //11 BR
+    };
 
-    /**
-     * Create the solved-state cube.
-     */
-    private static char[][][] createSolvedState() {
-        char[][][] c = new char[6][3][3];
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                c[FRONT][i][j] = 'W';
-                c[BACK][i][j] = 'Y';
-                c[RIGHT][i][j] = 'B';
-                c[LEFT][i][j] = 'G';
-                c[UP][i][j] = 'O';
-                c[DONW][i][j] = 'R';
-            }
+    // All face turns we'll search over
+    private static final String[] MOVES = {
+        "U", "U'", "U2",
+        "D", "D'", "D2",
+        "L", "L'", "L2",
+        "R", "R'", "R2",
+        "F", "F'", "F2",
+        "B", "B'", "B2"
+    };
+
+    public static class Facelet {
+        char colour;
+        int face;
+
+        public Facelet(char colour, int face) {
+            this.colour = colour;
+            this.face = face;
         }
-        return c;
     }
 
-    /**
-     * Default constructor: solved cube.
+    public static class Center {
+        int index;
+        Facelet f;
+
+        public Center(int index, Facelet f) {
+            this.index = index;
+            this.f = f;
+        }
+    }
+
+    public static class Edge {
+        int index;
+        int ori;
+        Facelet f1, f2;
+
+        public Edge(int index, int ori, Facelet f1, Facelet f2) {
+            this.index = index;
+            this.ori = ori;
+            this.f1 = f1;
+            this.f2 = f2;
+        }
+    }
+
+    public static class Corner {
+        int index;
+        int ori;
+        Facelet f1, f2, f3;
+
+        public Corner(int index, int ori, Facelet f1, Facelet f2, Facelet f3) {
+            this.index = index;
+            this.ori = ori;
+            this.f1 = f1;
+            this.f2 = f2;
+            this.f3 = f3;
+        }
+    }
+
+    /*
+              UP
+        LEFT FRONT RIGHT BACK
+             DOWN
      */
     public Solve() {
-        state = copyState(solvedState);
+        cube = readString(SOLVED);
+        initState(cube, corners, edges, center);
+        char[][][] solvedCube = readString(SOLVED);
+        initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
     }
 
-    /**
-     * Construct from a 9-line net file (same format as your toString). If
-     * anything fails, it throws a RuntimeException.
-     */
-    public Solve(String fileName) {
-        state = new char[6][3][3];
-        try (BufferedReader input = new BufferedReader(new FileReader(fileName))) {
-            String[] s = new String[9];
+    public Solve(File file) {
+        cube = readFile(file);
+        initState(cube, corners, edges, center);
+        char[][][] solvedCube = readString(SOLVED);
+        initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
+    }
+
+    public char[][][] readFile(File file) {
+        String[] lines = new String[9];
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file));
             for (int i = 0; i < 9; i++) {
-                s[i] = input.readLine();
-                if (s[i] == null) {
-                    throw new RuntimeException("Not enough lines in cube file");
-                }
+                lines[i] = br.readLine();
             }
+            br.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return readLines(lines);
+    }
 
-            // UP
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    state[UP][i][j] = s[i].charAt(j + 3);
-                }
+    public char[][][] readString(String string) {
+        String[] lines = string.split("\n");
+        return readLines(lines);
+    }
+
+    public char[][][] readLines(String[] lines) {
+        char[][][] cube = new char[6][3][3];
+
+        //Up
+        for (int i = 0; i < 3; i++) {
+            String line = lines[i];
+            for (int k = 0; k < 3; k++) {
+                cube[U][i][k] = line.charAt(3 + k);
             }
+        }
 
-            // LEFT, FRONT, RIGHT, BACK
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    state[LEFT][i][j] = s[i + 3].charAt(j);
-                    state[FRONT][i][j] = s[i + 3].charAt(j + 3);
-                    state[RIGHT][i][j] = s[i + 3].charAt(j + 6);
-                    state[BACK][i][j] = s[i + 3].charAt(j + 9);
-                }
+        //Left, Front, Right, Back
+        for (int i = 0; i < 3; i++) {
+            String line = lines[3 + i];
+
+            for (int k = 0; k < 3; k++) { //Left
+                cube[L][i][k] = line.charAt(k);
+                cube[F][i][k] = line.charAt(k + 3);
+                cube[R][i][k] = line.charAt(k + 6);
+                cube[B][i][k] = line.charAt(k + 9);
             }
+        }
 
-            // DOWN
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    state[DONW][i][j] = s[i + 6].charAt(j + 3);
-                }
+        //Down
+        for (int i = 0; i < 3; i++) {
+            String line = lines[6 + i];
+            for (int k = 0; k < 3; k++) {
+                cube[D][i][k] = line.charAt(3 + k);
             }
+        }
 
-        } catch (IOException e) {
-            throw new RuntimeException("Error reading cube file", e);
+        return cube;
+    }
+
+    public void initState(char[][][] cube, Corner[] cornerArr, Edge[] edgeArr, Center[] centerArr) {
+        for (int i = 0; i < 6; i++) {//center
+            char col = cube[i][1][1];
+            centerArr[i] = new Center(i, new Facelet(col, i));
+        }
+
+        char uCol = centerArr[U].f.colour;
+        char dCol = centerArr[D].f.colour;
+        char fCol = centerArr[F].f.colour;
+        char bCol = centerArr[B].f.colour;
+
+        for (int i = 0; i < CORNERS.length; i++) {//corners
+            int[] c = CORNERS[i];
+
+            Facelet f1 = new Facelet(cube[c[0]][c[1]][c[2]], c[0]);
+            Facelet f2 = new Facelet(cube[c[3]][c[4]][c[5]], c[3]);
+            Facelet f3 = new Facelet(cube[c[6]][c[7]][c[8]], c[6]);
+
+            int ori = cornerOri(f1, f2, f3, uCol, dCol);
+
+            cornerArr[i] = new Corner(i, ori, f1, f2, f3);
+        }
+
+        for (int i = 0; i < EDGES.length; i++) {//edges
+            int[] e = EDGES[i];
+            Facelet f1 = new Facelet(cube[e[0]][e[1]][e[2]], e[0]);
+            Facelet f2 = new Facelet(cube[e[3]][e[4]][e[5]], e[3]);
+
+            int ori = edgeOri(f1, f2, uCol, dCol, fCol, bCol);
+
+            edgeArr[i] = new Edge(i, ori, f1, f2);
         }
     }
 
-    // ===================== Basic cube operations =====================
-    /**
-     * Rotate 4 stickers (indices: [face,row,col]) in a cycle.
-     */
-    private void rotate4(int[] ind1, int[] ind2, int[] ind3, int[] ind4) {
-        char tmp = state[ind4[0]][ind4[1]][ind4[2]];
-        state[ind4[0]][ind4[1]][ind4[2]] = state[ind3[0]][ind3[1]][ind3[2]];
-        state[ind3[0]][ind3[1]][ind3[2]] = state[ind2[0]][ind2[1]][ind2[2]];
-        state[ind2[0]][ind2[1]][ind2[2]] = state[ind1[0]][ind1[1]][ind1[2]];
-        state[ind1[0]][ind1[1]][ind1[2]] = tmp;
+    public int cornerOri(Facelet f1, Facelet f2, Facelet f3, char uCol, char dCol) {
+        Facelet ud;
+        int pos;
+
+        if (f1.colour == uCol || f1.colour == dCol) {
+            ud = f1;
+            pos = 0;
+        } else if (f2.colour == uCol || f2.colour == dCol) {
+            ud = f2;
+            pos = 1;
+        } else {
+            ud = f3;
+            pos = 2;
+        }
+
+        if (ud.face == U || ud.face == D) {
+            return 0;
+        }
+
+        return pos;
     }
 
-    /**
-     * Rotate one face clockwise.
-     */
-    private void rotateOneSide(int side) {
-        rotate4(new int[]{side, 0, 0}, new int[]{side, 0, 2}, new int[]{side, 2, 2}, new int[]{side, 2, 0});
-        rotate4(new int[]{side, 0, 1}, new int[]{side, 1, 2}, new int[]{side, 2, 1}, new int[]{side, 1, 0});
-    }
+    public int edgeOri(Facelet f1, Facelet f2, char uCol, char dCol, char fCol, char bCol) {
+        Facelet fb, ud;
+        boolean f1ud = (f1.colour == uCol || f1.colour == dCol);
+        boolean f2ud = (f2.colour == uCol || f2.colour == dCol);
 
-    // ---- Six face moves (clockwise quarter turns) ----
-    private void moveF() {
-        rotateOneSide(FRONT);
-        // update the four faces adjacent to F
-        rotate4(new int[]{UP, 2, 0}, new int[]{RIGHT, 0, 0}, new int[]{DONW, 0, 2}, new int[]{LEFT, 2, 2});
-        rotate4(new int[]{UP, 2, 1}, new int[]{RIGHT, 1, 0}, new int[]{DONW, 0, 1}, new int[]{LEFT, 1, 2});
-        rotate4(new int[]{UP, 2, 2}, new int[]{RIGHT, 2, 0}, new int[]{DONW, 0, 0}, new int[]{LEFT, 0, 2});
-    }
+        if (f1ud || f2ud) {
+            if (f1ud) {
+                ud = f1;
+                if (ud.face == U || ud.face == D) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else {
+                ud = f2;
+                if (ud.face == U || ud.face == D) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        }
 
-    private void moveB() {
-        rotateOneSide(BACK);
-        // update the four faces adjacent to B
-        rotate4(new int[]{UP, 0, 2}, new int[]{LEFT, 0, 0}, new int[]{DONW, 2, 0}, new int[]{RIGHT, 2, 2});
-        rotate4(new int[]{UP, 0, 1}, new int[]{LEFT, 1, 0}, new int[]{DONW, 2, 1}, new int[]{RIGHT, 1, 2});
-        rotate4(new int[]{UP, 0, 0}, new int[]{LEFT, 2, 0}, new int[]{DONW, 2, 2}, new int[]{RIGHT, 0, 2});
-    }
+        boolean f1fb = (f1.colour == fCol || f1.colour == bCol);
 
-    private void moveR() {
-        rotateOneSide(RIGHT);
-        // update the four faces adjacent to R
-        rotate4(new int[]{FRONT, 2, 2}, new int[]{UP, 2, 2}, new int[]{BACK, 0, 0}, new int[]{DONW, 2, 2});
-        rotate4(new int[]{FRONT, 1, 2}, new int[]{UP, 1, 2}, new int[]{BACK, 1, 0}, new int[]{DONW, 1, 2});
-        rotate4(new int[]{FRONT, 0, 2}, new int[]{UP, 0, 2}, new int[]{BACK, 2, 0}, new int[]{DONW, 0, 2});
-    }
+        if (f1fb) {
+            fb = f1;
+        } else {
+            fb = f2;
+        }
 
-    private void moveL() {
-        rotateOneSide(LEFT);
-        // update the four faces adjacent to L
-        rotate4(new int[]{BACK, 2, 2}, new int[]{UP, 0, 0}, new int[]{FRONT, 0, 0}, new int[]{DONW, 0, 0});
-        rotate4(new int[]{BACK, 1, 2}, new int[]{UP, 1, 0}, new int[]{FRONT, 1, 0}, new int[]{DONW, 1, 0});
-        rotate4(new int[]{BACK, 0, 2}, new int[]{UP, 2, 0}, new int[]{FRONT, 2, 0}, new int[]{DONW, 2, 0});
-    }
-
-    private void moveU() {
-        rotateOneSide(UP);
-        // update the four faces adjacent to U
-        rotate4(new int[]{BACK, 0, 0}, new int[]{RIGHT, 0, 0}, new int[]{FRONT, 0, 0}, new int[]{LEFT, 0, 0});
-        rotate4(new int[]{BACK, 0, 1}, new int[]{RIGHT, 0, 1}, new int[]{FRONT, 0, 1}, new int[]{LEFT, 0, 1});
-        rotate4(new int[]{BACK, 0, 2}, new int[]{RIGHT, 0, 2}, new int[]{FRONT, 0, 2}, new int[]{LEFT, 0, 2});
-    }
-
-    private void moveD() {
-        rotateOneSide(DONW);
-        // update the four faces adjacent to D
-        rotate4(new int[]{LEFT, 2, 0}, new int[]{FRONT, 2, 0}, new int[]{RIGHT, 2, 0}, new int[]{BACK, 2, 0});
-        rotate4(new int[]{LEFT, 2, 1}, new int[]{FRONT, 2, 1}, new int[]{RIGHT, 2, 1}, new int[]{BACK, 2, 1});
-        rotate4(new int[]{LEFT, 2, 2}, new int[]{FRONT, 2, 2}, new int[]{RIGHT, 2, 2}, new int[]{BACK, 2, 2});
-    }
-
-    /**
-     * Apply a single clockwise quarter turn.
-     */
-    public void makeMove(char c) {
-        switch (c) {
-            case 'F':
-                moveF();
-                break;
-            case 'B':
-                moveB();
-                break;
-            case 'R':
-                moveR();
-                break;
-            case 'L':
-                moveL();
-                break;
-            case 'U':
-                moveU();
-                break;
-            case 'D':
-                moveD();
-                break;
-            default:
-                throw new IllegalArgumentException("Incorrect move: " + c);
+        if (fb.face == F || fb.face == B) {
+            return 0;
+        } else {
+            return 1;
         }
     }
 
-    /**
-     * Apply a sequence of moves like "RUFDL...".
-     */
-    public void applyMoves(String moves) {
-        for (char c : moves.toCharArray()) {
-            makeMove(c);
-        }
+    public void printCube() {
+        System.out.println(cubeToString(cube));
     }
 
-    /**
-     * Check if current cube is solved.
-     */
+    public String cubeToString(char[][][] cube) {
+        StringBuilder string = new StringBuilder();
+
+        for (int row = 0; row < 3; row++) {
+            string.append("   ");
+            for (int col = 0; col < 3; col++) {
+                string.append(cube[U][row][col]);
+            }
+            string.append("\n");
+        }
+
+        for (int row = 0; row < 3; row++) {
+            for (int face = 1; face <= 4; face++) {
+                for (int col = 0; col < 3; col++) {
+                    string.append(cube[face][row][col]);
+                }
+            }
+            string.append("\n");
+        }
+
+        for (int row = 0; row < 3; row++) {
+            string.append("   ");
+            for (int col = 0; col < 3; col++) {
+                string.append(cube[D][row][col]);
+            }
+            string.append("\n");
+        }
+
+        return string.toString();
+    }
+
     public boolean isSolved() {
-        return isSolved(this.state);
-    }
+        char[][][] solvedCube = readString(SOLVED);
 
-    /**
-     * String representation as the 9-line net.
-     */
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        // UP
-        for (int i = 0; i < 3; i++) {
-            sb.append("   ");
-            sb.append(state[UP][i][0]).append(state[UP][i][1]).append(state[UP][i][2]).append("\n");
-        }
-        // LEFT, FRONT, RIGHT, BACK
-        for (int i = 0; i < 3; i++) {
-            sb.append(state[LEFT][i][0]).append(state[LEFT][i][1]).append(state[LEFT][i][2]);
-            sb.append(state[FRONT][i][0]).append(state[FRONT][i][1]).append(state[FRONT][i][2]);
-            sb.append(state[RIGHT][i][0]).append(state[RIGHT][i][1]).append(state[RIGHT][i][2]);
-            sb.append(state[BACK][i][0]).append(state[BACK][i][1]).append(state[BACK][i][2]).append("\n");
-        }
-        // DOWN
-        for (int i = 0; i < 3; i++) {
-            sb.append("   ");
-            sb.append(state[DONW][i][0]).append(state[DONW][i][1]).append(state[DONW][i][2]).append("\n");
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Order of a move sequence: smallest k such that applying it k times
-     * returns to solved.
-     */
-    public static int order(String moves) {
-        Solve cube = new Solve();
-        cube.applyMoves(moves);
-        int ord = 1;
-        while (!cube.isSolved()) {
-            cube.applyMoves(moves);
-            ord++;
-        }
-        return ord;
-    }
-
-    // ===================== IDA* + "PDB-style" heuristic =====================
-    // Deep copy of a cube state
-    private static char[][][] copyState(char[][][] src) {
-        char[][][] dst = new char[6][3][3];
-        for (int f = 0; f < 6; f++) {
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    dst[f][i][j] = src[f][i][j];
-                }
-            }
-        }
-        return dst;
-    }
-
-    // Apply a single move to an arbitrary state using existing move logic
-    private void applyMoveToState(char[][][] s, char move) {
-        char[][][] backup = this.state;
-        this.state = s;
-        makeMove(move);
-        this.state = backup;
-    }
-
-    // Check if an arbitrary state is solved
-    private static boolean isSolved(char[][][] s) {
-        for (int f = 0; f < 6; f++) {
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    if (s[f][i][j] != solvedState[f][i][j]) {
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                for (int k = 0; k < 3; k++) {
+                    if (cube[i][j][k] != solvedCube[i][j][k]) {
                         return false;
                     }
                 }
@@ -288,109 +326,451 @@ public class Solve {
         return true;
     }
 
-    // Trivially admissible heuristic: always 0
-    // This turns IDA* into a plain iterative deepening DFS on depth.
-    private int heuristic(char[][][] s) {
-        return 0;
+    // --- helper used by the solver for arbitrary states ---
+    private boolean cubesEqual(char[][][] a, char[][][] b) {
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                for (int k = 0; k < 3; k++) {
+                    if (a[i][j][k] != b[i][j][k]) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
-    /**
-     * Solve the current cube using IDA*. Returns a move string like "RUFD..."
-     * (clockwise quarter-turns only), or null if no solution found within the
-     * time limit.
-     */
-    public String idaStarSolve(long timeLimitMillis) {
-        char[][][] start = copyState(this.state);
+    public char[][][] cloneCube(char[][][] cube) {
+        char[][][] temp = new char[6][3][3];
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                for (int k = 0; k < 3; k++) {
+                    temp[i][j][k] = cube[i][j][k];
+                }
+            }
+        }
+        return temp;
+    }
 
-        if (isSolved(start)) {
-            return "";
+    public void applyMoves(String sequence) {
+        String[] moves = sequence.trim().split("\\s+");
+
+        for (String m : moves) {
+            if (m.isEmpty()) continue;
+            applySingleMove(m);
+        }
+    }
+
+    // factor out single-move application so solver can reuse it
+    private void applySingleMove(String m) {
+        switch (m) {
+            case "U":
+                moveU();
+                break;
+            case "U'":
+                moveUprime();
+                break;
+            case "U2":
+                moveU2();
+                break;
+
+            case "D":
+                moveD();
+                break;
+            case "D'":
+                moveDprime();
+                break;
+            case "D2":
+                moveD2();
+                break;
+
+            case "L":
+                moveL();
+                break;
+            case "L'":
+                moveLprime();
+                break;
+            case "L2":
+                moveL2();
+                break;
+
+            case "R":
+                moveR();
+                break;
+            case "R'":
+                moveRprime();
+                break;
+            case "R2":
+                moveR2();
+                break;
+
+            case "F":
+                moveF();
+                break;
+            case "F'":
+                moveFprime();
+                break;
+            case "F2":
+                moveF2();
+                break;
+
+            case "B":
+                moveB();
+                break;
+            case "B'":
+                moveBprime();
+                break;
+            case "B2":
+                moveB2();
+                break;
+        }
+    }
+
+    public char[][][] applyMoveToCube(char[][][] cube, String move) {
+        char[][][] prev = this.cube;
+        this.cube = cloneCube(cube);
+        applySingleMove(move);
+
+        char[][][] result = cloneCube(this.cube);
+        this.cube = prev;
+        return result;
+    }
+    
+    //Heuristic
+    private int heuristic(char[][][] state) {
+        int mismatch = 0;
+        for (int face = 0; face < 6; face++) {
+            char center = state[face][1][1];
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (state[face][i][j] != center) {
+                        mismatch++;
+                    }
+                }
+            }
+        }
+        return mismatch;
+    }
+    
+    //IDDFS
+    public String solveCube(int maxDepth) {
+        char[][][] start = cloneCube(this.cube);
+        char[][][] solvedCube = readString(SOLVED);
+
+        if (cubesEqual(start, solvedCube)) {
+            return ""; // already solved
         }
 
-        long startTime = System.currentTimeMillis();
-        int bound = heuristic(start);  // currently 0
-        idaSolution = null;
+        for (int depth = 1; depth <= maxDepth; depth++) {
+            String result = dfsSolve(start, solvedCube, "", depth, null);
+            if (result != null) {
+                return result.trim();
+            }
+        }
+        return null; // no solution within maxDepth
+    }
 
-        // Ensure bound starts at least 1
-        if (bound < 1) {
-            bound = 1;
+    private String dfsSolve(char[][][] state,
+                            char[][][] solved,
+                            String path,
+                            int depth,
+                            String lastMove) {
+        if (depth == 0) {
+            if (cubesEqual(state, solved)) {
+                return path;
+            }
+            return null;
         }
 
-        while (bound <= MAX_DEPTH) {
-            int t = idaSearch(start, 0, bound, startTime, timeLimitMillis, new StringBuilder(), '\0');
-
-            if (t == FOUND) {
-                return idaSolution;  // solution path as string of moves
+        for (String move : MOVES) {
+            // Simple pruning: don't turn the same face twice in a row
+            if (lastMove != null && !lastMove.isEmpty()) {
+                if (move.charAt(0) == lastMove.charAt(0)) {
+                    continue;
+                }
             }
 
-            if (t == INF) {
-                // no solution at this or smaller f-bounds within depth/time limits
-                return null;
-            }
+            char[][][] next = applyMoveToCube(state, move);
+            String newPath = path.isEmpty() ? move : (path + " " + move);
 
-            if (System.currentTimeMillis() - startTime > timeLimitMillis) {
-                return null; // timed out
+            String result = dfsSolve(next, solved, newPath, depth - 1, move);
+            if (result != null) {
+                return result;
             }
-
-            bound = t; // increase f-bound to smallest overrun
         }
-
-        // Exhausted up to MAX_DEPTH
         return null;
     }
 
-    /**
-     * Recursive IDA* DFS with iterative deepening on f = g + h.
-     */
-    private int idaSearch(char[][][] state,
-            int g,
-            int bound,
-            long startTime,
-            long timeLimit,
-            StringBuilder path,
-            char lastMove) {
+    // row/col helpers and moves
 
-// Hard depth limit
-        if (g > MAX_DEPTH) {
-            return INF;
+    public char[] getRow(int face, int row) {
+        char[] temp = new char[3];
+        for (int i = 0; i < 3; i++) {
+            temp[i] = cube[face][row][i];
         }
-
-// Time guard
-        if (System.currentTimeMillis() - startTime > timeLimit) {
-            return INF;
-        }
-
-        int h = heuristic(state);   // currently 0
-        int f = g + h;
-
-        if (f > bound) {
-            return f;
-        }
-
-        if (isSolved(state)) {
-            idaSolution = path.toString();
-            return FOUND;
-        }
-
-        int min = INF;
-
-        for (char move : MOVES) {
-
-            char[][][] next = copyState(state);
-            applyMoveToState(next, move);
-
-            path.append(move);
-            int t = idaSearch(next, g + 1, bound, startTime, timeLimit, path, move);
-            path.deleteCharAt(path.length() - 1);
-
-            if (t == FOUND) {
-                return FOUND;
-            }
-            if (t < min) {
-                min = t;
-            }
-        }
-
-        return min;
+        return temp;
     }
 
+    public void setRow(int face, int row, char[] val) {
+        for (int i = 0; i < 3; i++) {
+            cube[face][row][i] = val[i];
+        }
+    }
+
+    public char[] getCol(int face, int col) {
+        char[] temp = new char[3];
+        for (int i = 0; i < 3; i++) {
+            temp[i] = cube[face][i][col];
+        }
+        return temp;
+    }
+
+    public void setCol(int face, int col, char[] val) {
+        for (int i = 0; i < 3; i++) {
+            cube[face][i][col] = val[i];
+        }
+    }
+
+    public char[] reverse(char[] array) {
+        char temp = array[0];
+        array[0] = array[2];
+        array[2] = temp;
+        return array;
+    }
+
+    public void rotateCW(int face) {
+        char[][] temp = cube[face];
+
+        char prev = temp[0][0]; //corners
+        temp[0][0] = temp[2][0];
+        temp[2][0] = temp[2][2];
+        temp[2][2] = temp[0][2];
+        temp[0][2] = prev;
+
+        prev = temp[0][1]; //edges
+        temp[0][1] = temp[1][0];
+        temp[1][0] = temp[2][1];
+        temp[2][1] = temp[1][2];
+        temp[1][2] = prev;
+    }
+
+    public void rotateCorners(int c1, int c2, int c3, int c4) {
+        Corner temp = corners[c4];
+        corners[c4] = corners[c3];
+        corners[c3] = corners[c2];
+        corners[c2] = corners[c1];
+        corners[c1] = temp;
+    }
+
+    public void rotateEdges(int e1, int e2, int e3, int e4) {
+        Edge temp = edges[e4];
+        edges[e4] = edges[e3];
+        edges[e3] = edges[e2];
+        edges[e2] = edges[e1];
+        edges[e1] = temp;
+    }
+
+    public void twistCorner(int index, int x) {
+        corners[index].ori = (corners[index].ori + x + 3) % 3;
+    }
+
+    public void flipEdge(int index) {
+        edges[index].ori ^= 1;
+    }
+
+    public void moveU() {
+        rotateCW(U);
+
+        char[] f = getRow(F, 0);
+        char[] r = getRow(R, 0);
+        char[] b = getRow(B, 0);
+        char[] l = getRow(L, 0);
+
+        setRow(F, 0, r);
+        setRow(L, 0, f);
+        setRow(B, 0, l);
+        setRow(R, 0, b);
+
+        rotateCorners(0, 1, 2, 3);
+        rotateEdges(0, 1, 2, 3);
+    }
+
+    public void moveU2() {
+        moveU();
+        moveU();
+    }
+
+    public void moveUprime() {
+        moveU();
+        moveU();
+        moveU();
+    }
+
+    public void moveL() {
+        rotateCW(L);
+
+        char[] u = getCol(U, 0);
+        char[] f = getCol(F, 0);
+        char[] d = getCol(D, 0);
+        char[] b = getCol(B, 2);
+
+        setCol(F, 0, u);
+        setCol(D, 0, f);
+        setCol(B, 2, reverse(d));
+        setCol(U, 0, reverse(b));
+
+        rotateCorners(3, 0, 4, 7);
+        twistCorner(3, 1);
+        twistCorner(0, 2);
+        twistCorner(4, 1);
+        twistCorner(7, 2);
+
+        rotateEdges(2, 9, 6, 10);
+    }
+
+    public void moveL2() {
+        moveL();
+        moveL();
+    }
+
+    public void moveLprime() {
+        moveL();
+        moveL();
+        moveL();
+    }
+
+    public void moveF() {
+        rotateCW(F);
+
+        char[] u = getRow(U, 2);
+        char[] r = getCol(R, 0);
+        char[] d = getRow(D, 0);
+        char[] l = getCol(L, 2);
+
+        setCol(R, 0, u);
+        setRow(D, 0, reverse(r));
+        setCol(L, 2, reverse(d));
+        setRow(U, 2, reverse(l));
+
+        rotateCorners(0, 1, 5, 4);
+        twistCorner(0, 1);
+        twistCorner(1, 2);
+        twistCorner(5, 1);
+        twistCorner(4, 2);
+
+        rotateEdges(1, 8, 5, 9);
+        flipEdge(1);
+        flipEdge(8);
+        flipEdge(5);
+        flipEdge(9);
+    }
+
+    public void moveFprime() {
+        moveF();
+        moveF();
+        moveF();
+    }
+
+    public void moveF2() {
+        moveF();
+        moveF();
+    }
+
+    public void moveR() {
+        rotateCW(R);
+
+        char[] u = getCol(U, 2);
+        char[] b = getCol(B, 0);
+        char[] d = getCol(D, 2);
+        char[] f = getCol(F, 2);
+
+        setCol(U, 2, f);
+        setCol(F, 2, d);
+        setCol(D, 2, reverse(b));
+        setCol(B, 0, reverse(u));
+
+        rotateCorners(1, 2, 6, 5);
+        twistCorner(1, 1);
+        twistCorner(2, 2);
+        twistCorner(6, 1);
+        twistCorner(5, 2);
+
+        rotateEdges(0, 11, 4, 8);
+    }
+
+    public void moveRprime() {
+        moveR();
+        moveR();
+        moveR();
+    }
+
+    public void moveR2() {
+        moveR();
+        moveR();
+    }
+
+    public void moveB() {
+        rotateCW(B);
+
+        char[] u = getRow(U, 0);
+        char[] l = getCol(L, 0);
+        char[] d = getRow(D, 2);
+        char[] r = getCol(R, 2);
+
+        setRow(U, 0, r);
+        setCol(R, 2, d);
+        setRow(D, 2, l);
+        setCol(L, 0, u);
+
+        rotateCorners(2, 3, 7, 6);
+        twistCorner(2, 1);
+        twistCorner(3, 2);
+        twistCorner(7, 1);
+        twistCorner(6, 2);
+
+        rotateEdges(3, 10, 7, 11);
+        flipEdge(3);
+        flipEdge(10);
+        flipEdge(7);
+        flipEdge(11);
+    }
+
+    public void moveBprime() {
+        moveB();
+        moveB();
+        moveB();
+    }
+
+    public void moveB2() {
+        moveB();
+        moveB();
+    }
+
+    public void moveD() {
+        rotateCW(D);
+
+        char[] f = getRow(F, 2);
+        char[] r = getRow(R, 2);
+        char[] b = getRow(B, 2);
+        char[] l = getRow(L, 2);
+
+        setRow(R, 2, f);
+        setRow(B, 2, reverse(r));
+        setRow(L, 2, reverse(b));
+        setRow(F, 2, l);
+
+        rotateCorners(4, 5, 6, 7);
+        rotateEdges(4, 5, 6, 7);
+    }
+
+    public void moveDprime() {
+        moveD();
+        moveD();
+        moveD();
+    }
+
+    public void moveD2() {
+        moveD();
+        moveD();
+    }
 }
