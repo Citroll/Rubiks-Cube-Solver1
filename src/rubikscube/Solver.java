@@ -1,7 +1,10 @@
 package rubikscube;
 
 import java.io.*;
+<<<<<<< HEAD
 import java.lang.invoke.MethodHandles;
+=======
+>>>>>>> parent of aab0de8 (fuck)
 
 public class Solver {
 
@@ -22,31 +25,33 @@ public class Solver {
         }
 
         File input = new File(args[0]); //converts file
+<<<<<<< HEAD
         File output = new File(args[1]);
         Solve cube = new Solve(input);
+=======
+        Solve s = new Solve(input);
 
-        String solution = cube.idaStarSolve(10_000); // 10 seconds
+        int maxDepth = 8;
+        String solution = s.solveCube(maxDepth);
+>>>>>>> parent of aab0de8 (fuck)
+
         if (solution == null) {
-            System.out.println("No solution found within time limit.");
+            System.out.println("No solution found within depth " + maxDepth);
         } else {
+            s.printCube();
             System.out.println("Solution: " + solution);
+<<<<<<< HEAD
             cube.applyMoves(solution);
             System.out.println("Solved? " + cube.isSolved());
+=======
+            s.applyMoves(solution);
+            System.out.println("Solved? " + s.isSolved());
+>>>>>>> parent of aab0de8 (fuck)
         }
-
-        /*try (PrintWriter out = new PrintWriter(new FileWriter(output))) {
-            if (solution == null) {
-                // If you want, you can change this to just be blank instead
-                System.out.println("No solution found within depth " + maxDepth);
-            } else {
-                System.out.println(solution);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
+        //File output = new File(args[1]);
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;
         System.out.println("Execution time in milliseconds: " + durationInNano / 1_000_000.0);
-
     }
+
 }

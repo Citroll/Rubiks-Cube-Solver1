@@ -44,7 +44,11 @@ public class Solve {
         {D, 0, 0, L, 2, 2, F, 2, 0}, //4 DLF
         {D, 0, 2, F, 2, 2, R, 2, 0}, //5 DFR
         {D, 2, 2, R, 2, 2, B, 2, 0}, //6 DRB
+<<<<<<< HEAD
         {D, 2, 0, B, 2, 2, L, 2, 0} //7 DBL
+=======
+        {D, 2, 0, B, 2, 2, L, 2, 0}  //7 DBL
+>>>>>>> parent of aab0de8 (fuck)
     };
 
     private static final int[][] EDGES = {
@@ -73,7 +77,10 @@ public class Solve {
     };
 
     public static class Facelet {
+<<<<<<< HEAD
 
+=======
+>>>>>>> parent of aab0de8 (fuck)
         char colour;
         int face;
 
@@ -84,7 +91,10 @@ public class Solve {
     }
 
     public static class Center {
+<<<<<<< HEAD
 
+=======
+>>>>>>> parent of aab0de8 (fuck)
         int index;
         Facelet f;
 
@@ -95,7 +105,10 @@ public class Solve {
     }
 
     public static class Edge {
+<<<<<<< HEAD
 
+=======
+>>>>>>> parent of aab0de8 (fuck)
         int index;
         int ori;
         Facelet f1, f2;
@@ -109,7 +122,10 @@ public class Solve {
     }
 
     public static class Corner {
+<<<<<<< HEAD
 
+=======
+>>>>>>> parent of aab0de8 (fuck)
         int index;
         int ori;
         Facelet f1, f2, f3;
@@ -369,9 +385,13 @@ public class Solve {
         String[] moves = sequence.trim().split("\\s+");
 
         for (String m : moves) {
+<<<<<<< HEAD
             if (m.isEmpty()) {
                 continue;
             }
+=======
+            if (m.isEmpty()) continue;
+>>>>>>> parent of aab0de8 (fuck)
             applySingleMove(m);
         }
     }
@@ -450,6 +470,7 @@ public class Solve {
         this.cube = prev;
         return result;
     }
+<<<<<<< HEAD
 
     public static String expandMove(String move) {
         move = move.trim();
@@ -661,6 +682,84 @@ public class Solve {
         return temp;
     }
 
+=======
+    
+    //Heuristic
+    private int heuristic(char[][][] state) {
+        int mismatch = 0;
+        for (int face = 0; face < 6; face++) {
+            char center = state[face][1][1];
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (state[face][i][j] != center) {
+                        mismatch++;
+                    }
+                }
+            }
+        }
+        return mismatch;
+    }
+    
+    //IDDFS
+    public String solveCube(int maxDepth) {
+        char[][][] start = cloneCube(this.cube);
+        char[][][] solvedCube = readString(SOLVED);
+
+        if (cubesEqual(start, solvedCube)) {
+            return ""; // already solved
+        }
+
+        for (int depth = 1; depth <= maxDepth; depth++) {
+            String result = dfsSolve(start, solvedCube, "", depth, null);
+            if (result != null) {
+                return result.trim();
+            }
+        }
+        return null; // no solution within maxDepth
+    }
+
+    private String dfsSolve(char[][][] state,
+                            char[][][] solved,
+                            String path,
+                            int depth,
+                            String lastMove) {
+        if (depth == 0) {
+            if (cubesEqual(state, solved)) {
+                return path;
+            }
+            return null;
+        }
+
+        for (String move : MOVES) {
+            // Simple pruning: don't turn the same face twice in a row
+            if (lastMove != null && !lastMove.isEmpty()) {
+                if (move.charAt(0) == lastMove.charAt(0)) {
+                    continue;
+                }
+            }
+
+            char[][][] next = applyMoveToCube(state, move);
+            String newPath = path.isEmpty() ? move : (path + " " + move);
+
+            String result = dfsSolve(next, solved, newPath, depth - 1, move);
+            if (result != null) {
+                return result;
+            }
+        }
+        return null;
+    }
+
+    // row/col helpers and moves
+
+    public char[] getRow(int face, int row) {
+        char[] temp = new char[3];
+        for (int i = 0; i < 3; i++) {
+            temp[i] = cube[face][row][i];
+        }
+        return temp;
+    }
+
+>>>>>>> parent of aab0de8 (fuck)
     public void setRow(int face, int row, char[] val) {
         for (int i = 0; i < 3; i++) {
             cube[face][row][i] = val[i];
