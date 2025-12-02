@@ -31,6 +31,9 @@ public class Solver {
         //String moves = sc.nextLine();
         String moves = "D'";
         solved.printCube();
+        solved.moveU();
+        solved.moveUPrime();
+        solved.printCube();
         File output = new File(args[1]);
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;

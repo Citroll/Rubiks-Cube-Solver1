@@ -270,11 +270,11 @@ public class Solve {
         }
     }
 
-    public void printCube(){
+    public void printCube() {
         System.out.println(cubeToString(cube));
     }
 
-    public String cubeToString(char[][][] cube){
+    public String cubeToString(char[][][] cube) {
         StringBuilder string = new StringBuilder();
 
         for (int row = 0; row < 3; row++) {
@@ -303,5 +303,56 @@ public class Solve {
         }
 
         return string.toString();
+    }
+
+    public void applyMoves(String sequence) {
+        String[] moves = sequence.trim().split("\\s+");
+
+        for (String m : moves) {
+            switch (m) {
+                case "U":
+                    moveU();
+                    break;
+            }
+        }
+
+    }
+
+    public void rotateCW(int face) {
+        char[][] temp = cube[face];
+
+        char prev = temp[0][0]; //corners
+        temp[0][0] = temp[2][0];
+        temp[2][0] = temp[2][2];
+        temp[2][2] = temp[0][2];
+        temp[0][2] = prev;
+
+        prev = temp[0][1]; //edges
+        temp[0][1] = temp[1][0];
+        temp[1][0] = temp[2][1];
+        temp[2][1] = temp[1][2];
+        temp[1][2] = prev;
+    }
+
+    public void moveU() {
+        //move band
+        char[] temp = cube[F][0].clone();
+        cube[F][0] = cube[L][0].clone();
+        cube[L][0] = cube[B][0].clone();
+        cube[B][0] = cube[R][0].clone();
+        cube[R][0] = temp;
+
+        initState(cube, corners, edges, center);//update
+    }
+
+    public void moveU2() {
+        moveU();
+        moveU();
+    }
+
+    public void moveUPrime() {
+        moveU();
+        moveU();
+        moveU();
     }
 }
