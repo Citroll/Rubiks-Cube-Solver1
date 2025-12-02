@@ -29,14 +29,25 @@ public class Solver {
         //Scanner sc = new Scanner(System.in);
         //System.out.println("Enter your string of moves (with spaces)");
         //String moves = sc.nextLine();
-        String moves = "U U U R R R U U U R R R U U U F F F";
+        String moves = "";
         solved.printCube();
-        solved.applyMoves(moves);
-        solved.printCube();
+        System.out.println(solved.isSolved());
+        moves = solved.firstLayerBFS(8);
+        System.out.println(moves);
+        if(moves != null){
+            solved.applyMoves(moves);
+            solved.printCube();
+            System.out.println(solved.isSolved());
+        }
+
+
+
+
+
         File output = new File(args[1]);
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;
-        System.out.println("Execution time in milliseconds: " + durationInNano / 1_000_000.0);
+        System.out.println("Execution time in seconds: " + durationInNano / 1_000_000_000.0);
     }
 
 }

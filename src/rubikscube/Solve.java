@@ -1,6 +1,7 @@
 package rubikscube;
 
 import java.io.*;
+import java.util.*;
 
 public class Solve {
 
@@ -52,6 +53,27 @@ public class Solve {
         {B, 1, 2, L, 1, 0}, //10 BL
         {R, 1, 2, B, 1, 0}, //11 BR
     };
+
+    private static final String[] BFS_MOVES = {
+        "U","U'","U2",
+        "D","D'","D2",
+        "L","L'","L2",
+        "R","R'","R2",
+        "F","F'","F2",
+        "B","B'","B2"
+    };
+
+    public static class Node {
+        char[][][] state;
+        String moves;
+        int depth;
+
+        Node(char[][][] state, String moves, int depth){
+            this.state = state;
+            this.moves = moves;
+            this.depth = depth;
+        }
+    }
 
     public static class Facelet {
 
@@ -305,6 +327,54 @@ public class Solve {
         return string.toString();
     }
 
+    public boolean isSolved(){
+        char[][][] solvedCube = readString(SOLVED);
+
+        for(int i=0; i<6; i++){
+            for(int j=0; j<3; j++){
+                for(int k=0; k<3; k++){
+                    if(cube[i][j][k] != solvedCube[i][j][k]){
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+    
+    public boolean isFirstSolved(char[][][] cube){
+        char up = cube[U][1][1];
+        for(int i=0; i<3; i++){
+            for(int j=0; j<3; j++){
+                if(cube[U][i][j] != up){
+                    return false;
+                }
+            }
+        }
+
+        for(int i=1; i<5; i++){
+            char face = cube[i][1][1];
+            for(int j=0; j<3; j++){
+                if(cube[i][0][j] != face){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public char[][][] cloneCube(char[][][] cube){
+        char[][][] temp = new char[6][3][3];
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                for (int k = 0; k < 3; k++) {
+                    temp[i][j][k] = cube[i][j][k];
+                }
+            }
+        }
+        return temp;
+    }
+    
     public void applyMoves(String sequence) {
         String[] moves = sequence.trim().split("\\s+");
 
@@ -374,7 +444,66 @@ public class Solve {
 
     }
 
+    public char[][][] applyMoveToCube(char[][][] cube, String move){
+        char[][][] prev = this.cube;
+        this.cube = cloneCube(cube);
+        applyMoves(move);
+        
+        char[][][] result = cloneCube(this.cube);
+        this.cube = prev;
+        return result;
+    }
     //row & col helpers
+    public String firstLayerBFS(int maxDepth){
+        char[][][] start = cloneCube(this.cube);
+
+        if(isFirstSolved(start)){
+            return "";
+        }
+
+        Queue<Node> queue = new ArrayDeque<>();
+        Set<String> visited = new HashSet<>();
+
+        String first = cubeToString(start);
+        queue.add(new Node(start, "", 0));
+        visited.add(first);
+
+        while(!queue.isEmpty()){
+            Node cur = queue.remove();
+
+            if(cur.depth == maxDepth){
+                continue;
+            }
+
+            for(String move : BFS_MOVES){
+                char[][][] next = applyMoveToCube(cur.state, move);
+
+                if(isFirstSolved(next)){
+                    if(cur.moves.isEmpty()){
+                        return move;
+                    }else{
+                        return cur.moves + " " + move;
+                    }
+                }
+
+                String nextMove = cubeToString(next);
+                String newMoves;
+                if(!visited.contains(nextMove)){
+                    visited.add(nextMove);
+                    if(cur.moves.isEmpty()){
+                        newMoves = move;
+                    }else{
+                        newMoves = cur.moves + " " + move;
+                    }
+                    queue.add(new Node(next, newMoves, cur.depth+1));
+                }
+            }
+        }
+        return null;
+    }
+    
+    
+    
     public char[] getRow(int face, int row) {
         char[] temp = new char[3];
         for (int i = 0; i < 3; i++) {
