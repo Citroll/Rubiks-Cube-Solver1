@@ -1,7 +1,5 @@
 package rubikscube;
 
-import java.io.*;
-
 public class Solver {
 
     // To run, compile with:
@@ -20,24 +18,54 @@ public class Solver {
             return;
         }*/
 
-        File input = new File(args[0]); //converts file
-        Solve s = new Solve(input);
+ /*String fileName = args[0];
+        File output = new File(args[1]);
+        Solve cube = new Solve(fileName);
 
-        int maxDepth = 8;
-        String solution = s.solveCube(maxDepth);
-
+        String solution = cube.idaStarSolve(10_000); // 10 seconds
         if (solution == null) {
-            System.out.println("No solution found within depth " + maxDepth);
+            System.out.println("No solution found within time limit.");
         } else {
-            s.printCube();
             System.out.println("Solution: " + solution);
-            s.applyMoves(solution);
-            System.out.println("Solved? " + s.isSolved());
+            cube.applyMoves(solution);
+            System.out.println("Solved? " + cube.isSolved());
+        }*/
+        Solve c = new Solve();
+        System.out.println("Solved?\n" + c.isSolved());
+        System.out.println(c);
+
+        c.makeMove('F');
+        c.makeMove('F');
+        c.makeMove('F');
+        c.makeMove('F');
+        System.out.println("After FFFF, solved?\n" + c.isSolved());
+
+        c = new Solve();
+        String scram = "FRUL";
+        c.applyMoves(scram);
+        System.out.println("After scramble " + scram + ":\n" + c);
+
+        // Try solving that scrambled cube with a small time limit
+        String sol = c.idaStarSolve(5_000);
+        System.out.println("Found solution: " + sol);
+        if (sol != null) {
+            c.applyMoves(sol);
+            System.out.println("Solved after applying solution? " + c.isSolved());
         }
-        //File output = new File(args[1]);
+
+        /*try (PrintWriter out = new PrintWriter(new FileWriter(output))) {
+            if (solution == null) {
+                // If you want, you can change this to just be blank instead
+                System.out.println("No solution found within depth " + maxDepth);
+            } else {
+                System.out.println(solution);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }*/
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;
         System.out.println("Execution time in milliseconds: " + durationInNano / 1_000_000.0);
-    }
 
+    }
 }
