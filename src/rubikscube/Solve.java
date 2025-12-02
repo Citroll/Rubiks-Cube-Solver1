@@ -1,15 +1,6 @@
 package rubikscube;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
 
 public class Solve {
 
@@ -44,11 +35,7 @@ public class Solve {
         {D, 0, 0, L, 2, 2, F, 2, 0}, //4 DLF
         {D, 0, 2, F, 2, 2, R, 2, 0}, //5 DFR
         {D, 2, 2, R, 2, 2, B, 2, 0}, //6 DRB
-<<<<<<< HEAD
         {D, 2, 0, B, 2, 2, L, 2, 0} //7 DBL
-=======
-        {D, 2, 0, B, 2, 2, L, 2, 0}  //7 DBL
->>>>>>> parent of aab0de8 (fuck)
     };
 
     private static final int[][] EDGES = {
@@ -76,11 +63,15 @@ public class Solve {
         "B", "B'", "B2"
     };
 
-    public static class Facelet {
-<<<<<<< HEAD
+    // ----- IDA* fields -----
+    private static final int FOUND = -1;
+    private static final int INF = Integer.MAX_VALUE;
 
-=======
->>>>>>> parent of aab0de8 (fuck)
+// solution buffer used by IDA*
+    private String idaSolution = null;
+
+    public static class Facelet {
+
         char colour;
         int face;
 
@@ -91,10 +82,7 @@ public class Solve {
     }
 
     public static class Center {
-<<<<<<< HEAD
 
-=======
->>>>>>> parent of aab0de8 (fuck)
         int index;
         Facelet f;
 
@@ -105,10 +93,7 @@ public class Solve {
     }
 
     public static class Edge {
-<<<<<<< HEAD
 
-=======
->>>>>>> parent of aab0de8 (fuck)
         int index;
         int ori;
         Facelet f1, f2;
@@ -122,10 +107,7 @@ public class Solve {
     }
 
     public static class Corner {
-<<<<<<< HEAD
 
-=======
->>>>>>> parent of aab0de8 (fuck)
         int index;
         int ori;
         Facelet f1, f2, f3;
@@ -355,7 +337,6 @@ public class Solve {
         return true;
     }
 
-    // --- helper used by the solver for arbitrary states ---
     private boolean cubesEqual(char[][][] a, char[][][] b) {
         for (int i = 0; i < 6; i++) {
             for (int j = 0; j < 3; j++) {
@@ -385,13 +366,9 @@ public class Solve {
         String[] moves = sequence.trim().split("\\s+");
 
         for (String m : moves) {
-<<<<<<< HEAD
             if (m.isEmpty()) {
                 continue;
             }
-=======
-            if (m.isEmpty()) continue;
->>>>>>> parent of aab0de8 (fuck)
             applySingleMove(m);
         }
     }
@@ -461,6 +438,38 @@ public class Solve {
         }
     }
 
+    public String expandToQuarterTurns(String sequence) {
+        sequence = sequence.trim();
+        if (sequence.isEmpty()) return "";
+    
+        StringBuilder sb = new StringBuilder();
+        String[] moves = sequence.split("\\s+");
+        boolean first = true;
+    
+        for (String m : moves) {
+            if (m.isEmpty()) continue;
+    
+            char face = m.charAt(0);    // U, D, L, R, F, B
+            int reps = 1;               // default: one quarter turn
+    
+            if (m.length() > 1) {
+                char mod = m.charAt(1);
+                if (mod == '2') {
+                    reps = 2;           // X2 -> XX
+                } else if (mod == '\'') {
+                    reps = 3;           // X' -> XXX
+                }
+            }
+    
+            // append that many quarter turns as one combined token, e.g. "UUU"
+            for (int i = 0; i < reps; i++) {
+                sb.append(face);
+            }
+        }
+    
+        return sb.toString();
+    }
+
     public char[][][] applyMoveToCube(char[][][] cube, String move) {
         char[][][] prev = this.cube;
         this.cube = cloneCube(cube);
@@ -470,80 +479,6 @@ public class Solve {
         this.cube = prev;
         return result;
     }
-<<<<<<< HEAD
-
-    public static String expandMove(String move) {
-        move = move.trim();
-        if (move.isEmpty()) {
-            return "";
-        }
-
-        char face = move.charAt(0); // U, D, L, R, F, B
-
-        if (move.length() == 1) {
-            // Just "U"
-            return String.valueOf(face);
-        }
-
-        char suffix = move.charAt(1);
-        switch (suffix) {
-            case '2': // U2 -> "U U"
-                return face + "" + face;
-            case '\'': // U' -> "U U U"
-                return face + "" + face + "" + face;
-            default:
-                // Unknown suffix, just return as-is
-                return move;
-        }
-    }
-
-    public static String expandSequence(String sequence) {
-        StringBuilder sb = new StringBuilder();
-        String[] tokens = sequence.trim().split("\\s+");
-
-        for (String t : tokens) {
-            if (t.isEmpty()) {
-                continue;
-            }
-            String expanded = expandMove(t);
-            if (expanded.isEmpty()) {
-                continue;
-            }
-            sb.append(expanded);
-        }
-
-        return sb.toString();
-    }
-
-    // A* search node
-    private static class Node {
-
-        char[][][] state;
-        String key;      // serialized state (for HashMap/HashSet)
-        int g;           // cost so far
-        int f;           // g + h
-        String lastMove; // last move used to get here (for pruning)
-
-        Node(char[][][] state, String key, int g, int f, String lastMove) {
-            this.state = state;
-            this.key = key;
-            this.g = g;
-            this.f = f;
-            this.lastMove = lastMove;
-        }
-    }
-
-// To reconstruct the path: where did this state come from?
-    private static class ParentInfo {
-
-        String parentKey;
-        String move; // move that took parent -> this
-
-        ParentInfo(String parentKey, String move) {
-            this.parentKey = parentKey;
-            this.move = move;
-        }
-    }
 
     //Heuristic
     private int heuristic(char[][][] state) {
@@ -552,155 +487,17 @@ public class Solve {
             char center = state[face][1][1];
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    // skip centers (they already match center by definition)
-                    if (i == 1 && j == 1) {
-                        continue;
-                    }
-
                     if (state[face][i][j] != center) {
                         mismatch++;
                     }
                 }
             }
         }
-
-        // ceil(mismatch / 8.0) using integer math
+        // Each move can fix at most 8 stickers => depth >= ceil(mismatch/8)
         return (mismatch + 7) / 8;
     }
 
-    public String solveCubeAStar() {
-        // Starting state
-        char[][][] start = cloneCube(this.cube);
-        String startKey = cubeToString(start);
-
-        // Goal state
-        char[][][] goalState = readString(SOLVED);
-        String goalKey = cubeToString(goalState);
-
-        if (startKey.equals(goalKey)) {
-            return ""; // already solved
-        }
-
-        // Priority queue ordered by lowest f = g + h
-        PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
-
-        // gScore: best known cost from start to this state
-        Map<String, Integer> gScore = new HashMap<>();
-
-        // parent map for path reconstruction
-        Map<String, ParentInfo> parent = new HashMap<>();
-
-        // closed set of fully-explored states
-        Set<String> closed = new HashSet<>();
-
-        int h0 = heuristic(start);
-        Node startNode = new Node(start, startKey, 0, h0, null);
-
-        open.add(startNode);
-        gScore.put(startKey, 0);
-
-        while (!open.isEmpty()) {
-            Node current = open.poll();
-
-            // If we've already found a better path to this state, skip this stale entry
-            Integer bestG = gScore.get(current.key);
-            if (bestG != null && current.g > bestG) {
-                continue;
-            }
-
-            // Goal test
-            if (current.key.equals(goalKey)) {
-                // reconstruct compact path, then expand it to quarter turns
-                String compact = reconstructPath(parent, goalKey).trim();
-                return expandSequence(compact).trim();
-            }
-
-            if (!closed.add(current.key)) {
-                continue; // already processed
-            }
-
-            // Expand neighbors
-            for (String move : MOVES) {
-
-                // Simple pruning: don't move the same face twice in a row
-                if (current.lastMove != null && !current.lastMove.isEmpty()) {
-                    if (move.charAt(0) == current.lastMove.charAt(0)) {
-                        continue;
-                    }
-                }
-
-                char[][][] nextState = applyMoveToCube(current.state, move);
-                String nextKey = cubeToString(nextState);
-
-                int tentativeG = current.g + 1;
-
-                if (closed.contains(nextKey)) {
-                    continue;
-                }
-
-                int knownG = gScore.getOrDefault(nextKey, Integer.MAX_VALUE);
-                if (tentativeG >= knownG) {
-                    continue; // not a better path
-                }
-
-                // This is the best path so far to nextKey
-                gScore.put(nextKey, tentativeG);
-                parent.put(nextKey, new ParentInfo(current.key, move));
-
-                int h = heuristic(nextState);
-                int f = tentativeG + h;
-
-                Node neighbor = new Node(nextState, nextKey, tentativeG, f, move);
-                open.add(neighbor);
-            }
-        }
-
-        // No solution found (this shouldn't happen for valid scrambles)
-        return null;
-    }
-
-    private String reconstructPath(Map<String, ParentInfo> parent, String goalKey) {
-        List<String> moves = new ArrayList<>();
-        String currentKey = goalKey;
-
-        while (parent.containsKey(currentKey)) {
-            ParentInfo info = parent.get(currentKey);
-            moves.add(info.move);
-            currentKey = info.parentKey;
-        }
-
-        Collections.reverse(moves);
-        return String.join(" ", moves);
-    }
-
-    // row/col helpers and moves
-    public char[] getRow(int face, int row) {
-        char[] temp = new char[3];
-        for (int i = 0; i < 3; i++) {
-            temp[i] = cube[face][row][i];
-        }
-        return temp;
-    }
-
-=======
-    
-    //Heuristic
-    private int heuristic(char[][][] state) {
-        int mismatch = 0;
-        for (int face = 0; face < 6; face++) {
-            char center = state[face][1][1];
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    if (state[face][i][j] != center) {
-                        mismatch++;
-                    }
-                }
-            }
-        }
-        return mismatch;
-    }
-    
-    //IDDFS
+    // IDA* search using the heuristic
     public String solveCube(int maxDepth) {
         char[][][] start = cloneCube(this.cube);
         char[][][] solvedCube = readString(SOLVED);
@@ -709,48 +506,70 @@ public class Solve {
             return ""; // already solved
         }
 
-        for (int depth = 1; depth <= maxDepth; depth++) {
-            String result = dfsSolve(start, solvedCube, "", depth, null);
-            if (result != null) {
-                return result.trim();
+        idaSolution = null;
+
+        // initial bound is heuristic(start)
+        int bound = heuristic(start);
+
+        while (bound <= maxDepth) {
+            int t = idaSearch(start, solvedCube, 0, bound, null, "");
+            if (t == FOUND) {
+                return idaSolution == null ? null : idaSolution.trim();
             }
+            if (t == INF) {
+                break; // no solution within any higher bound
+            }
+            bound = t; // next IDA* threshold
         }
-        return null; // no solution within maxDepth
+
+        return null; // no solution up to maxDepth
     }
 
-    private String dfsSolve(char[][][] state,
-                            char[][][] solved,
-                            String path,
-                            int depth,
-                            String lastMove) {
-        if (depth == 0) {
-            if (cubesEqual(state, solved)) {
-                return path;
-            }
-            return null;
+    private int idaSearch(char[][][] state,
+            char[][][] solved,
+            int g,
+            int bound,
+            String lastMove,
+            String path) {
+
+        int h = heuristic(state);
+        int f = g + h;
+
+        if (f > bound) {
+            return f; // too expensive for this iteration
         }
 
+        if (cubesEqual(state, solved)) {
+            idaSolution = path;
+            return FOUND;
+        }
+
+        int min = INF;
+
         for (String move : MOVES) {
-            // Simple pruning: don't turn the same face twice in a row
-            if (lastMove != null && !lastMove.isEmpty()) {
-                if (move.charAt(0) == lastMove.charAt(0)) {
-                    continue;
-                }
+// Simple pruning: don't turn the same face twice in a row
+            if (lastMove != null && !lastMove.isEmpty()
+                    && move.charAt(0) == lastMove.charAt(0)) {
+                continue;
             }
 
             char[][][] next = applyMoveToCube(state, move);
             String newPath = path.isEmpty() ? move : (path + " " + move);
 
-            String result = dfsSolve(next, solved, newPath, depth - 1, move);
-            if (result != null) {
-                return result;
+            int t = idaSearch(next, solved, g + 1, bound, move, newPath);
+
+            if (t == FOUND) {
+                return FOUND;
+            }
+            if (t < min) {
+                min = t;
             }
         }
-        return null;
+
+        return min;
     }
 
     // row/col helpers and moves
-
     public char[] getRow(int face, int row) {
         char[] temp = new char[3];
         for (int i = 0; i < 3; i++) {
@@ -759,7 +578,6 @@ public class Solve {
         return temp;
     }
 
->>>>>>> parent of aab0de8 (fuck)
     public void setRow(int face, int row, char[] val) {
         for (int i = 0; i < 3; i++) {
             cube[face][row][i] = val[i];

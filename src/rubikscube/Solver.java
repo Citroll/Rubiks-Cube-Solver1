@@ -1,10 +1,6 @@
 package rubikscube;
 
 import java.io.*;
-<<<<<<< HEAD
-import java.lang.invoke.MethodHandles;
-=======
->>>>>>> parent of aab0de8 (fuck)
 
 public class Solver {
 
@@ -18,40 +14,34 @@ public class Solver {
             System.out.println(args[i]);
         }
 
-        if (args.length < 2) {
+        /*if (args.length < 2) {
             System.out.println("File names are not specified");
             System.out.println("usage: java " + MethodHandles.lookup().lookupClass().getName() + " input_file output_file");
             return;
-        }
+        }*/
 
-        File input = new File(args[0]); //converts file
-<<<<<<< HEAD
+        File input = new File(args[0]);
         File output = new File(args[1]);
-        Solve cube = new Solve(input);
-=======
         Solve s = new Solve(input);
 
-        int maxDepth = 8;
-        String solution = s.solveCube(maxDepth);
->>>>>>> parent of aab0de8 (fuck)
+        int maxDepth = 12;
+        String solution = s.expandToQuarterTurns(s.solveCube(maxDepth));
 
-        if (solution == null) {
-            System.out.println("No solution found within depth " + maxDepth);
-        } else {
-            s.printCube();
-            System.out.println("Solution: " + solution);
-<<<<<<< HEAD
-            cube.applyMoves(solution);
-            System.out.println("Solved? " + cube.isSolved());
-=======
-            s.applyMoves(solution);
-            System.out.println("Solved? " + s.isSolved());
->>>>>>> parent of aab0de8 (fuck)
+        try (PrintWriter out = new PrintWriter(new FileWriter(output))) {
+            if (solution == null) {
+                System.out.println("No solution found within depth " + maxDepth);
+            } else {
+                s.printCube();
+                System.out.println("Solution: " + solution);
+                s.applyMoves(solution);
+                System.out.println("Solved? " + s.isSolved());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        //File output = new File(args[1]);
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;
         System.out.println("Execution time in milliseconds: " + durationInNano / 1_000_000.0);
-    }
 
+    }
 }
