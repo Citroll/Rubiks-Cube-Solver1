@@ -313,9 +313,101 @@ public class Solve {
                 case "U":
                     moveU();
                     break;
+                case "U'":
+                    moveUprime();
+                    break;
+                case "U2":
+                    moveU2();
+                    break;
+
+                case "D":
+                    moveD();
+                    break;
+                case "D'":
+                    moveDprime();
+                    break;
+                case "D2":
+                    moveD2();
+                    break;
+
+                case "L":
+                    moveL();
+                    break;
+                case "L'":
+                    moveLprime();
+                    break;
+                case "L2":
+                    moveL2();
+                    break;
+
+                case "R":
+                    moveR();
+                    break;
+                case "R'":
+                    moveRprime();
+                    break;
+                case "R2":
+                    moveR2();
+                    break;
+
+                case "F":
+                    moveF();
+                    break;
+                case "F'":
+                    moveFprime();
+                    break;
+                case "F2":
+                    moveF2();
+                    break;
+
+                case "B":
+                    moveB();
+                    break;
+                case "B'":
+                    moveBprime();
+                    break;
+                case "B2":
+                    moveB2();
+                    break;
             }
         }
 
+    }
+
+    //row & col helpers
+    public char[] getRow(int face, int row) {
+        char[] temp = new char[3];
+        for (int i = 0; i < 3; i++) {
+            temp[i] = cube[face][row][i];
+        }
+        return temp;
+    }
+
+    public void setRow(int face, int row, char[] val) {
+        for (int i = 0; i < 3; i++) {
+            cube[face][row][i] = val[i];
+        }
+    }
+
+    public char[] getCol(int face, int col) {
+        char[] temp = new char[3];
+        for (int i = 0; i < 3; i++) {
+            temp[i] = cube[face][i][col];
+        }
+        return temp;
+    }
+
+    public void setCol(int face, int col, char[] val) {
+        for (int i = 0; i < 3; i++) {
+            cube[face][i][col] = val[i];
+        }
+    }
+
+    public char[] reverse(char[] array) {
+        char temp = array[0];
+        array[0] = array[2];
+        array[2] = temp;
+        return array;
     }
 
     public void rotateCW(int face) {
@@ -334,15 +426,45 @@ public class Solve {
         temp[1][2] = prev;
     }
 
-    public void moveU() {
-        //move band
-        char[] temp = cube[F][0].clone();
-        cube[F][0] = cube[L][0].clone();
-        cube[L][0] = cube[B][0].clone();
-        cube[B][0] = cube[R][0].clone();
-        cube[R][0] = temp;
+    public void rotateCorners(int c1, int c2, int c3, int c4) {
+        Corner temp = corners[c4];
+        corners[c4] = corners[c3];
+        corners[c3] = corners[c2];
+        corners[c2] = corners[c1];
+        corners[c1] = temp;
+    }
 
-        initState(cube, corners, edges, center);//update
+    public void rotateEdges(int e1, int e2, int e3, int e4) {
+        Edge temp = edges[e4];
+        edges[e4] = edges[e3];
+        edges[e3] = edges[e2];
+        edges[e2] = edges[e1];
+        edges[e1] = temp;
+    }
+
+    public void twistCorner(int index, int x) {
+        corners[index].ori = (corners[index].ori + x + 3) % 3;
+    }
+
+    public void flipEdge(int index) {
+        edges[index].ori ^= 1;
+    }
+
+    public void moveU() {
+        rotateCW(U);
+
+        char[] f = getRow(F, 0);
+        char[] r = getRow(R, 0);
+        char[] b = getRow(B, 0);
+        char[] l = getRow(L, 0);
+
+        setRow(F, 0, r);
+        setRow(L, 0, f);
+        setRow(B, 0, l);
+        setRow(R, 0, b);
+
+        rotateCorners(0, 1, 2, 3);
+        rotateEdges(0, 1, 2, 3);
     }
 
     public void moveU2() {
@@ -350,9 +472,178 @@ public class Solve {
         moveU();
     }
 
-    public void moveUPrime() {
+    public void moveUprime() { //change later if too slow
         moveU();
         moveU();
         moveU();
     }
+
+    public void moveL() {
+        rotateCW(L);
+
+        char[] u = getCol(U, 0);
+        char[] f = getCol(F, 0);
+        char[] d = getCol(D, 0);
+        char[] b = getCol(B, 2);
+
+        setCol(F, 0, u);
+        setCol(D, 0, f);
+        setCol(B, 2, reverse(d));
+        setCol(U, 0, reverse(b));
+
+        rotateCorners(3, 0, 4, 7);
+        twistCorner(3, 1);
+        twistCorner(0, 2);
+        twistCorner(4, 1);
+        twistCorner(7, 2);
+
+        rotateEdges(2, 9, 6, 10);
+    }
+
+    public void moveL2() {
+        moveL();
+        moveL();
+    }
+
+    public void moveLprime() {
+        moveL();
+        moveL();
+        moveL();
+    }
+
+    public void moveF() {
+        rotateCW(F);
+
+        char[] u = getRow(U, 2);
+        char[] r = getCol(R, 0);
+        char[] d = getRow(D, 0);
+        char[] l = getCol(L, 2);
+
+        setCol(R, 0, u);
+        setRow(D, 0, reverse(r));
+        setCol(L, 2, reverse(d));
+        setRow(U, 2, reverse(l));
+
+        rotateCorners(0, 1, 5, 4);
+        twistCorner(0, 1);
+        twistCorner(1, 2);
+        twistCorner(5, 1);
+        twistCorner(4, 2);
+
+        rotateEdges(1, 8, 5, 9);
+        flipEdge(1);
+        flipEdge(8);
+        flipEdge(5);
+        flipEdge(9);
+    }
+
+    public void moveFprime() {
+        moveF();
+        moveF();
+        moveF();
+    }
+
+    public void moveF2() {
+        moveF();
+        moveF();
+    }
+
+    public void moveR() {
+        rotateCW(R);
+
+        char[] u = getCol(U, 2);
+        char[] b = getCol(B, 0);
+        char[] d = getCol(D, 2);
+        char[] f = getCol(F, 2);
+
+        setCol(U, 2, f);
+        setCol(F, 2, d);
+        setCol(D, 2, reverse(b));
+        setCol(B, 0, reverse(u));
+
+        rotateCorners(1, 2, 6, 5);
+        twistCorner(1, 1);
+        twistCorner(2, 2);
+        twistCorner(6, 1);
+        twistCorner(5, 2);
+
+        rotateEdges(0, 11, 4, 8);
+    }
+
+    public void moveRprime() {
+        moveR();
+        moveR();
+        moveR();
+    }
+
+    public void moveR2() {
+        moveR();
+        moveR();
+    }
+
+    public void moveB() {
+        rotateCW(B);
+
+        char[] u = getRow(U, 0);
+        char[] l = getCol(L, 0);
+        char[] d = getRow(D, 2);
+        char[] r = getCol(R, 2);
+
+        setRow(U, 0, r);
+        setCol(R, 2, d);
+        setRow(D, 2, l);
+        setCol(L, 0, u);
+
+        rotateCorners(2, 3, 7, 6);
+        twistCorner(2, 1);
+        twistCorner(3, 2);
+        twistCorner(7, 1);
+        twistCorner(6, 2);
+
+        rotateEdges(3, 10, 7, 11);
+        flipEdge(3);
+        flipEdge(10);
+        flipEdge(7);
+        flipEdge(11);
+    }
+
+    public void moveBprime() {
+        moveB();
+        moveB();
+        moveB();
+    }
+
+    public void moveB2() {
+        moveB();
+        moveB();
+    }
+
+    public void moveD() {
+        rotateCW(D);
+
+        char[] f = getRow(F, 2);
+        char[] r = getRow(R, 2);
+        char[] b = getRow(B, 2);
+        char[] l = getRow(L, 2);
+
+        setRow(R, 2, f);
+        setRow(B, 2, reverse(r));
+        setRow(L, 2, reverse(b));
+        setRow(F, 2, l);
+
+        rotateCorners(4, 5, 6, 7);
+        rotateEdges(4, 5, 6, 7);
+    }
+
+    public void moveDprime() {
+        moveD();
+        moveD();
+        moveD();
+    }
+
+    public void moveD2() {
+        moveD();
+        moveD();
+    }
+
 }

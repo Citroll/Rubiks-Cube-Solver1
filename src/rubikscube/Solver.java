@@ -29,10 +29,9 @@ public class Solver {
         //Scanner sc = new Scanner(System.in);
         //System.out.println("Enter your string of moves (with spaces)");
         //String moves = sc.nextLine();
-        String moves = "D'";
+        String moves = "U U U R R R U U U R R R U U U F F F";
         solved.printCube();
-        solved.moveU();
-        solved.moveUPrime();
+        solved.applyMoves(moves);
         solved.printCube();
         File output = new File(args[1]);
         long endTime = System.nanoTime();
