@@ -1,9 +1,17 @@
+
 package rubikscube;
 
 import java.io.*;
-import java.util.Arrays;
 
 public class Solve {
+
+    Corner[] corners = new Corner[8];
+    Edge[] edges = new Edge[12];
+    Center[] center = new Center[8];
+
+    Corner[] solvedCorners = new Corner[8];
+    Edge[] solvedEdges = new Edge[12];
+    Center[] solvedCenter = new Center[8];
 
     private char[][][] cube;
     private static final int U = 0, L = 1, F = 2, R = 3, B = 4, D = 5;
@@ -17,15 +25,6 @@ public class Solve {
             + "   RRR\n"
             + "   RRR\n"
             + "   RRR\n";
-
-    private static final String[] MOVES = {
-        "U", "U'", "U2",
-        "D", "D'", "D2",
-        "L", "L'", "L2",
-        "R", "R'", "R2",
-        "F", "F'", "F2",
-        "B", "B'", "B2"
-    };
 
     //CORNERS: UFL, URF, UBR, ULB, DLF, DFR, DRB, DBL
     //EDGES: UR, UF, UL, UB, DR, DF, DL, DB, FR, FL, BL, BR
@@ -55,9 +54,21 @@ public class Solve {
         {R, 1, 2, B, 1, 0}, //11 BR
     };
 
+    // All face turns we'll search over
+    private static final String[] MOVES = {
+        "U", "U'", "U2",
+        "D", "D'", "D2",
+        "L", "L'", "L2",
+        "R", "R'", "R2",
+        "F", "F'", "F2",
+        "B", "B'", "B2"
+    };
+
+    // ----- IDA* fields -----
     private static final int FOUND = -1;
     private static final int INF = Integer.MAX_VALUE;
 
+// solution buffer used by IDA*
     private String idaSolution = null;
 
     public static class Facelet {
@@ -71,12 +82,63 @@ public class Solve {
         }
     }
 
+    public static class Center {
+
+        int index;
+        Facelet f;
+
+        public Center(int index, Facelet f) {
+            this.index = index;
+            this.f = f;
+        }
+    }
+
+    public static class Edge {
+
+        int index;
+        int ori;
+        Facelet f1, f2;
+
+        public Edge(int index, int ori, Facelet f1, Facelet f2) {
+            this.index = index;
+            this.ori = ori;
+            this.f1 = f1;
+            this.f2 = f2;
+        }
+    }
+
+    public static class Corner {
+
+        int index;
+        int ori;
+        Facelet f1, f2, f3;
+
+        public Corner(int index, int ori, Facelet f1, Facelet f2, Facelet f3) {
+            this.index = index;
+            this.ori = ori;
+            this.f1 = f1;
+            this.f2 = f2;
+            this.f3 = f3;
+        }
+    }
+
+    /*
+              UP
+        LEFT FRONT RIGHT BACK
+             DOWN
+     */
     public Solve() {
         cube = readString(SOLVED);
+        initState(cube, corners, edges, center);
+        char[][][] solvedCube = readString(SOLVED);
+        initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
     }
 
     public Solve(File file) {
         cube = readFile(file);
+        initState(cube, corners, edges, center);
+        char[][][] solvedCube = readString(SOLVED);
+        initState(solvedCube, solvedCorners, solvedEdges, solvedCenter);
     }
 
     public char[][][] readFile(File file) {
@@ -130,6 +192,100 @@ public class Solve {
         }
 
         return cube;
+    }
+
+    public void initState(char[][][] cube, Corner[] cornerArr, Edge[] edgeArr, Center[] centerArr) {
+        for (int i = 0; i < 6; i++) {//center
+            char col = cube[i][1][1];
+            centerArr[i] = new Center(i, new Facelet(col, i));
+        }
+
+        char uCol = centerArr[U].f.colour;
+        char dCol = centerArr[D].f.colour;
+        char fCol = centerArr[F].f.colour;
+        char bCol = centerArr[B].f.colour;
+
+        for (int i = 0; i < CORNERS.length; i++) {//corners
+            int[] c = CORNERS[i];
+
+            Facelet f1 = new Facelet(cube[c[0]][c[1]][c[2]], c[0]);
+            Facelet f2 = new Facelet(cube[c[3]][c[4]][c[5]], c[3]);
+            Facelet f3 = new Facelet(cube[c[6]][c[7]][c[8]], c[6]);
+
+            int ori = cornerOri(f1, f2, f3, uCol, dCol);
+
+            cornerArr[i] = new Corner(i, ori, f1, f2, f3);
+        }
+
+        for (int i = 0; i < EDGES.length; i++) {//edges
+            int[] e = EDGES[i];
+            Facelet f1 = new Facelet(cube[e[0]][e[1]][e[2]], e[0]);
+            Facelet f2 = new Facelet(cube[e[3]][e[4]][e[5]], e[3]);
+
+            int ori = edgeOri(f1, f2, uCol, dCol, fCol, bCol);
+
+            edgeArr[i] = new Edge(i, ori, f1, f2);
+        }
+    }
+
+    public int cornerOri(Facelet f1, Facelet f2, Facelet f3, char uCol, char dCol) {
+        Facelet ud;
+        int pos;
+
+        if (f1.colour == uCol || f1.colour == dCol) {
+            ud = f1;
+            pos = 0;
+        } else if (f2.colour == uCol || f2.colour == dCol) {
+            ud = f2;
+            pos = 1;
+        } else {
+            ud = f3;
+            pos = 2;
+        }
+
+        if (ud.face == U || ud.face == D) {
+            return 0;
+        }
+
+        return pos;
+    }
+
+    public int edgeOri(Facelet f1, Facelet f2, char uCol, char dCol, char fCol, char bCol) {
+        Facelet fb, ud;
+        boolean f1ud = (f1.colour == uCol || f1.colour == dCol);
+        boolean f2ud = (f2.colour == uCol || f2.colour == dCol);
+
+        if (f1ud || f2ud) {
+            if (f1ud) {
+                ud = f1;
+                if (ud.face == U || ud.face == D) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else {
+                ud = f2;
+                if (ud.face == U || ud.face == D) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        }
+
+        boolean f1fb = (f1.colour == fCol || f1.colour == bCol);
+
+        if (f1fb) {
+            fb = f1;
+        } else {
+            fb = f2;
+        }
+
+        if (fb.face == F || fb.face == B) {
+            return 0;
+        } else {
+            return 1;
+        }
     }
 
     public void printCube() {
@@ -283,84 +439,20 @@ public class Solve {
         }
     }
 
-    public int cornerOri(Facelet f1, Facelet f2, Facelet f3, char uCol, char dCol) {
-        Facelet ud;
-        int pos;
-
-        if (f1.colour == uCol || f1.colour == dCol) {
-            ud = f1;
-            pos = 0;
-        } else if (f2.colour == uCol || f2.colour == dCol) {
-            ud = f2;
-            pos = 1;
-        } else {
-            ud = f3;
-            pos = 2;
-        }
-
-        if (ud.face == U || ud.face == D) {
-            return 0;
-        }
-
-        return pos;
-    }
-
-    public int edgeOri(Facelet f1, Facelet f2, char uCol, char dCol, char fCol, char bCol) {
-        Facelet fb, ud;
-        boolean f1ud = (f1.colour == uCol || f1.colour == dCol);
-        boolean f2ud = (f2.colour == uCol || f2.colour == dCol);
-
-        if (f1ud || f2ud) {
-            if (f1ud) {
-                ud = f1;
-                if (ud.face == U || ud.face == D) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            } else {
-                ud = f2;
-                if (ud.face == U || ud.face == D) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            }
-        }
-
-        boolean f1fb = (f1.colour == fCol || f1.colour == bCol);
-
-        if (f1fb) {
-            fb = f1;
-        } else {
-            fb = f2;
-        }
-
-        if (fb.face == F || fb.face == B) {
-            return 0;
-        } else {
-            return 1;
-        }
-    }
-
     public String expandToQuarterTurns(String sequence) {
         sequence = sequence.trim();
-        if (sequence.isEmpty()) {
-            return "";
-        }
-
+        if (sequence.isEmpty()) return "";
+    
         StringBuilder sb = new StringBuilder();
         String[] moves = sequence.split("\\s+");
         boolean first = true;
-
+    
         for (String m : moves) {
-            if (m.isEmpty()) {
-                continue;
-            }
-
+            if (m.isEmpty()) continue;
+    
             char face = m.charAt(0);    // U, D, L, R, F, B
             int reps = 1;               // default: one quarter turn
-
+    
             if (m.length() > 1) {
                 char mod = m.charAt(1);
                 if (mod == '2') {
@@ -369,13 +461,13 @@ public class Solve {
                     reps = 3;           // X' -> XXX
                 }
             }
-
+    
             // append that many quarter turns as one combined token, e.g. "UUU"
             for (int i = 0; i < reps; i++) {
                 sb.append(face);
             }
         }
-
+    
         return sb.toString();
     }
 
@@ -390,7 +482,7 @@ public class Solve {
     }
 
     //Heuristic
-    private int stickerHeuristic(char[][][] state) {
+    private int heuristic(char[][][] state) {
         int mismatch = 0;
         for (int face = 0; face < 6; face++) {
             char center = state[face][1][1];
@@ -406,156 +498,6 @@ public class Solve {
         return (mismatch + 7) / 8;
     }
 
-    private int orientationHeuristic(char[][][] state) {
-        // center colours
-        char uCol = state[U][1][1];
-        char dCol = state[D][1][1];
-        char fCol = state[F][1][1];
-        char bCol = state[B][1][1];
-
-        int twistedCorners = 0;
-        int flippedEdges = 0;
-
-        // ---- corners ----
-        for (int i = 0; i < CORNERS.length; i++) {
-            int[] c = CORNERS[i];
-
-            Facelet f1 = new Facelet(state[c[0]][c[1]][c[2]], c[0]);
-            Facelet f2 = new Facelet(state[c[3]][c[4]][c[5]], c[3]);
-            Facelet f3 = new Facelet(state[c[6]][c[7]][c[8]], c[6]);
-
-            int ori = cornerOri(f1, f2, f3, uCol, dCol);
-            if (ori != 0) {
-                twistedCorners++;
-            }
-        }
-
-        // ---- edges ----
-        for (int i = 0; i < EDGES.length; i++) {
-            int[] e = EDGES[i];
-
-            Facelet f1 = new Facelet(state[e[0]][e[1]][e[2]], e[0]);
-            Facelet f2 = new Facelet(state[e[3]][e[4]][e[5]], e[3]);
-
-            int ori = edgeOri(f1, f2, uCol, dCol, fCol, bCol);
-            if (ori != 0) {
-                flippedEdges++;
-            }
-        }
-
-        // Each move can fix at most 4 twisted corners (on F/R/L/B turns)
-        int cornerMoves = (twistedCorners + 3) / 4;
-
-        // Each move can flip at most 4 edges (on F/R/L/B turns)
-        int edgeMoves = (flippedEdges + 3) / 4;
-
-        return Math.max(cornerMoves, edgeMoves);
-    }
-
-    private int permutationHeuristic(char[][][] state) {
-        char[][][] solved = readString(SOLVED); // solved reference (small but frequent cost)
-
-        int misplacedCorners = 0;
-        int misplacedEdges = 0;
-
-        // ---- corners ----
-        for (int i = 0; i < CORNERS.length; i++) {
-            int[] c = CORNERS[i];
-
-            // current colours at this corner position
-            char[] cur = {
-                state[c[0]][c[1]][c[2]],
-                state[c[3]][c[4]][c[5]],
-                state[c[6]][c[7]][c[8]]
-            };
-
-            // solved colours at this corner position
-            char[] sol = {
-                solved[c[0]][c[1]][c[2]],
-                solved[c[3]][c[4]][c[5]],
-                solved[c[6]][c[7]][c[8]]
-            };
-
-            Arrays.sort(cur);
-            Arrays.sort(sol);
-
-            if (!Arrays.equals(cur, sol)) {
-                // different colour triple => wrong corner piece in this slot
-                misplacedCorners++;
-            }
-        }
-
-        // ---- edges ----
-        for (int i = 0; i < EDGES.length; i++) {
-            int[] e = EDGES[i];
-
-            // current colours at this edge position
-            char[] cur = {
-                state[e[0]][e[1]][e[2]],
-                state[e[3]][e[4]][e[5]]
-            };
-
-            // solved colours at this edge position
-            char[] sol = {
-                solved[e[0]][e[1]][e[2]],
-                solved[e[3]][e[4]][e[5]]
-            };
-
-            Arrays.sort(cur);
-            Arrays.sort(sol);
-
-            if (!Arrays.equals(cur, sol)) {
-                // different colour pair => wrong edge piece in this slot
-                misplacedEdges++;
-            }
-        }
-
-        // Each move can move up to 4 corners / 4 edges
-        int cornerMoves = (misplacedCorners + 3) / 4;
-        int edgeMoves = (misplacedEdges + 3) / 4;
-
-        return Math.max(cornerMoves, edgeMoves);
-    }
-
-    private int heuristic(char[][][] state) {
-        int hSticker = stickerHeuristic(state);
-        int hOri = orientationHeuristic(state);
-        int hPerm = permutationHeuristic(state);
-
-        // Take the maximum of admissible lower bounds -> still admissible
-        return Math.max(hSticker, Math.max(hOri, hPerm));
-    }
-
-    public void debugHeuristicCheck() {
-        // 1) True solved state
-        char[][][] solvedState = readString(SOLVED);
-    
-        int hStickerSolved = stickerHeuristic(solvedState);
-        int hOriSolved     = orientationHeuristic(solvedState);
-        int hPermSolved    = permutationHeuristic(solvedState);
-        int hSolved        = heuristic(solvedState);
-    
-        System.out.println("Solved state heuristic components:");
-        System.out.println("  sticker = " + hStickerSolved);
-        System.out.println("  ori     = " + hOriSolved);
-        System.out.println("  perm    = " + hPermSolved);
-        System.out.println("  TOTAL   = " + hSolved);
-    
-        // 2) Current cube (from file or default constructor)
-        char[][][] current = cloneCube(this.cube);
-    
-        int hStickerCur = stickerHeuristic(current);
-        int hOriCur     = orientationHeuristic(current);
-        int hPermCur    = permutationHeuristic(current);
-        int hCur        = heuristic(current);
-    
-        System.out.println("Current state heuristic components:");
-        System.out.println("  sticker = " + hStickerCur);
-        System.out.println("  ori     = " + hOriCur);
-        System.out.println("  perm    = " + hPermCur);
-        System.out.println("  TOTAL   = " + hCur);
-    }
-
     // IDA* search using the heuristic
     public String solveCube(int maxDepth) {
         char[][][] start = cloneCube(this.cube);
@@ -569,9 +511,6 @@ public class Solve {
 
         // initial bound is heuristic(start)
         int bound = heuristic(start);
-        System.out.println("Initial hSticker=" + stickerHeuristic(start)
-        + " hOri=" + orientationHeuristic(start)
-        + " hPerm=" + permutationHeuristic(start));
 
         while (bound <= maxDepth) {
             int t = idaSearch(start, solvedCube, 0, bound, null, "");
@@ -683,6 +622,30 @@ public class Solve {
         temp[1][2] = prev;
     }
 
+    public void rotateCorners(int c1, int c2, int c3, int c4) {
+        Corner temp = corners[c4];
+        corners[c4] = corners[c3];
+        corners[c3] = corners[c2];
+        corners[c2] = corners[c1];
+        corners[c1] = temp;
+    }
+
+    public void rotateEdges(int e1, int e2, int e3, int e4) {
+        Edge temp = edges[e4];
+        edges[e4] = edges[e3];
+        edges[e3] = edges[e2];
+        edges[e2] = edges[e1];
+        edges[e1] = temp;
+    }
+
+    public void twistCorner(int index, int x) {
+        corners[index].ori = (corners[index].ori + x + 3) % 3;
+    }
+
+    public void flipEdge(int index) {
+        edges[index].ori ^= 1;
+    }
+
     public void moveU() {
         rotateCW(U);
 
@@ -695,6 +658,9 @@ public class Solve {
         setRow(L, 0, f);
         setRow(B, 0, l);
         setRow(R, 0, b);
+
+        rotateCorners(0, 1, 2, 3);
+        rotateEdges(0, 1, 2, 3);
     }
 
     public void moveU2() {
@@ -720,6 +686,14 @@ public class Solve {
         setCol(D, 0, f);
         setCol(B, 2, reverse(d));
         setCol(U, 0, reverse(b));
+
+        rotateCorners(3, 0, 4, 7);
+        twistCorner(3, 1);
+        twistCorner(0, 2);
+        twistCorner(4, 1);
+        twistCorner(7, 2);
+
+        rotateEdges(2, 9, 6, 10);
     }
 
     public void moveL2() {
@@ -745,6 +719,18 @@ public class Solve {
         setRow(D, 0, reverse(r));
         setCol(L, 2, reverse(d));
         setRow(U, 2, reverse(l));
+
+        rotateCorners(0, 1, 5, 4);
+        twistCorner(0, 1);
+        twistCorner(1, 2);
+        twistCorner(5, 1);
+        twistCorner(4, 2);
+
+        rotateEdges(1, 8, 5, 9);
+        flipEdge(1);
+        flipEdge(8);
+        flipEdge(5);
+        flipEdge(9);
     }
 
     public void moveFprime() {
@@ -770,6 +756,14 @@ public class Solve {
         setCol(F, 2, d);
         setCol(D, 2, reverse(b));
         setCol(B, 0, reverse(u));
+
+        rotateCorners(1, 2, 6, 5);
+        twistCorner(1, 1);
+        twistCorner(2, 2);
+        twistCorner(6, 1);
+        twistCorner(5, 2);
+
+        rotateEdges(0, 11, 4, 8);
     }
 
     public void moveRprime() {
@@ -795,6 +789,18 @@ public class Solve {
         setCol(R, 2, d);
         setRow(D, 2, l);
         setCol(L, 0, u);
+
+        rotateCorners(2, 3, 7, 6);
+        twistCorner(2, 1);
+        twistCorner(3, 2);
+        twistCorner(7, 1);
+        twistCorner(6, 2);
+
+        rotateEdges(3, 10, 7, 11);
+        flipEdge(3);
+        flipEdge(10);
+        flipEdge(7);
+        flipEdge(11);
     }
 
     public void moveBprime() {
@@ -820,6 +826,9 @@ public class Solve {
         setRow(B, 2, reverse(r));
         setRow(L, 2, reverse(b));
         setRow(F, 2, l);
+
+        rotateCorners(4, 5, 6, 7);
+        rotateEdges(4, 5, 6, 7);
     }
 
     public void moveDprime() {

@@ -1,7 +1,6 @@
 package rubikscube;
 
 import java.io.*;
-import java.lang.invoke.MethodHandles;
 
 public class Solver {
 
@@ -15,16 +14,15 @@ public class Solver {
             System.out.println(args[i]);
         }
 
-        if (args.length < 2) {
+        /*if (args.length < 2) {
             System.out.println("File names are not specified");
             System.out.println("usage: java " + MethodHandles.lookup().lookupClass().getName() + " input_file output_file");
             return;
-        }
+        }*/
 
         File input = new File(args[0]);
         File output = new File(args[1]);
         Solve s = new Solve(input);
-        s.debugHeuristicCheck();
 
         int maxDepth = 20;
         String solution = s.expandToQuarterTurns(s.solveCube(maxDepth));
@@ -33,16 +31,12 @@ public class Solver {
             if (solution == null) {
                 System.out.println("No solution found within depth " + maxDepth);
             } else {
-                s.printCube();
                 System.out.println("Solution: " + solution);
-                s.applyMoves(solution);
-                System.out.println("Solved? " + s.isSolved());
-                out.println(solution);
             }
+            out.println(solution);
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         long endTime = System.nanoTime();
         long durationInNano = endTime - startTime;
         System.out.println("Execution time in milliseconds: " + durationInNano / 1_000_000.0);
